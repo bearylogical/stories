@@ -576,13 +576,13 @@
 			>
 		</li>
 		<li>
-			Wikipedia Explanation of <a href="https://github.com/ONSvisual/sk-scrolly/tree/main"
+			Wikipedia Explanation of <a href="https://en.wikipedia.org/wiki/Postal_codes_in_Singapore"
 				>Singapore Postal Code
 			</a>system
 		</li>
 		<li>
 			Scroller implmentation adapted from UK's Office of National Statistics <a
-				href="https://en.wikipedia.org/wiki/Postal_codes_in_Singapore">scrolly template</a
+				href="https://github.com/ONSvisual/sk-scrolly/tree/main">scrolly template</a
 			>
 		</li>
 	</ol>

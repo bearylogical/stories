@@ -12,7 +12,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | --- | --- | --- |
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
 | 2. Data | Done except deploy time (85 s, target 1 min; per-step timings needed) | bearylogical/stories#4 |
-| 3. Scrollytelling | In progress (PR open; Coolify preview steps left) | bearylogical/stories#5 |
+| 3. Scrollytelling | Done | bearylogical/stories#5 |
 | 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
 | 5. The rest | Not started (needs 3) | n/a |
 
@@ -180,7 +180,10 @@ The postal-sg Steps couldn't be checked by eye on localhost, because R2's CORS r
 
 **Left for phase 5:** the Story list imports every Story's `metadata` eagerly, and a Draft's code is still built as an unlinked chunk in production. Neither is routable or listed.
 
-**Coolify (not done yet; needs the owner's go-ahead):** add `PUBLIC_INCLUDE_DRAFTS=true` as a **preview-only** build variable, and turn on PR previews.
+**Coolify and DNS (done 2026-11-15):**
+- `PUBLIC_INCLUDE_DRAFTS` is `true` for preview deployments and `false` for production. Coolify adds a production copy of every new variable, so the production one is set to `false` on purpose.
+- PR previews are on (repository members only) at `{{pr_id}}.stories.bearylogical.net`. A push to an open PR builds its preview.
+- DNS: `*.stories.bearylogical.net` is a DNS-only (grey-cloud) A record to the Coolify server, and Coolify gets a Let's Encrypt certificate for each preview. It can't go through Cloudflare's proxy, because the free Universal SSL certificate covers `*.bearylogical.net` but not a second-level wildcard.
 
 ---
 

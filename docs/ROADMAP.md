@@ -8,13 +8,13 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 
 ## Status
 
-| Phase                | Status                                                                                      | Where                                          |
-| -------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 1. Base              | Done (two Coolify variable tidy-ups left)                                                   | bearylogical/stories#1, bearylogical/stories#2 |
-| 2. Data              | In progress: PR open; R2 upload, Cloudflare rules and Coolify image pin waiting on approval | bearylogical/stories#4                         |
-| 3. Scrollytelling    | Not started                                                                                 | n/a                                            |
-| 4. postal-sg rebuild | Not started (needs 2 and 3)                                                                 | n/a                                            |
-| 5. The rest          | Not started (needs 3)                                                                       | n/a                                            |
+| Phase                | Status                                                                                        | Where                                          |
+| -------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1. Base              | Done (two Coolify variable tidy-ups left)                                                     | bearylogical/stories#1, bearylogical/stories#2 |
+| 2. Data              | PR open: Story Data published and Cloudflare set up; Coolify image pin and deploy timing left | bearylogical/stories#4                         |
+| 3. Scrollytelling    | Not started                                                                                   | n/a                                            |
+| 4. postal-sg rebuild | Not started (needs 2 and 3)                                                                   | n/a                                            |
+| 5. The rest          | Not started (needs 3)                                                                         | n/a                                            |
 
 Update this table when a phase starts, opens a PR, or merges.
 
@@ -81,7 +81,7 @@ Open a session in this repo and say:
    - Moving Source Data out of `src/assets/` (item 5) removes about 219 MB that every deploy clones and copies into the Docker build. The app imports only `singapore_districts_centers.geojson` from there.
    - Add a `.dockerignore` (or the Railpack equivalent; check that Coolify's Railpack build honours it) that leaves out `data/`, `scripts/`, `docs/` and `build/`.
    - Move script-only packages (`cheerio`, `axios`, `dotenv`) out of the app's install, e.g. into a `scripts/package.json` workspace, so `pnpm i` installs less on every deploy.
-   - Pin the static image to a version (e.g. `nginx:1.29-alpine`) so Coolify doesn't pull `latest` on every deploy.
+   - Pin the static image to a version (e.g. `nginx:1.30-alpine`, the current stable branch) so Coolify doesn't pull `latest` on every deploy.
    - Turn on Coolify's debug logs for one deploy to get timings per step, before and after.
 
 **Done when:** postal-sg downloads under 3 MB before the first Step (check the DevTools network panel, cache disabled), works on localhost, the publish script uploads a new versioned file, and a deploy takes under 1 minute.
@@ -95,6 +95,15 @@ Open a session in this repo and say:
 - Source Data moved from `src/assets/` to `data/postal-sg/` (git-ignored). Only `singapore_districts_centers.geojson` stays in `src/assets/`, because the page imports it.
 - `cheerio`, `axios` and `dotenv` moved to `scripts/package.json`, a separate package (not a pnpm workspace, so the site's `pnpm i` doesn't install it). Install with `pnpm -C scripts install`.
 - `.dockerignore` leaves out `data/`, `docs/`, `scripts/`, `build/` and `.git`. Railpack honours it ([docs](https://railpack.com/config/excluding-files)).
+
+**Published and configured (2026-11-15):**
+
+- `pnpm data:publish postal-sg` uploaded 85 files to the R2 bucket `bearylogical-stories-data` (custom domain `data.bearylogical.net`) under `postal-sg/`. A second run reports all 85 unchanged.
+- Zone `bearylogical.net` has three new rules, all scoped to `data.bearylogical.net`. Before this, none of the three phases had any rules.
+  - Cache rule, on paths matching `/*/*.v*.*`: cache everything, edge TTL 1 year, browser TTL from the origin. Unversioned root files are not affected.
+  - Response header rule, on the same paths: `Cache-Control: public, max-age=31536000, immutable`.
+  - Compression rule (Brotli, then gzip) for `application/octet-stream`. Without it Cloudflare sent `points.v1.bin` uncompressed (1.70 MB); with it, 0.91 MB.
+- R2 CORS now also allows `http://localhost:4173` and `https://*.stories.bearylogical.net`, and the `HEAD` method. The existing four origins stay. R2 sends `Vary: Origin` and Cloudflare caches each origin separately, so Cache Everything can't hand one site another site's CORS header.
 
 **Found along the way:**
 

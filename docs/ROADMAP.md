@@ -12,7 +12,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | --- | --- | --- |
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
 | 2. Data | Not started | n/a |
-| 3. Scrollytelling | In progress (PR open; Coolify preview steps left) | bearylogical/stories#5 |
+| 3. Scrollytelling | In progress (PR open; preview DNS left) | bearylogical/stories#5 |
 | 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
 | 5. The rest | Not started (needs 3) | n/a |
 
@@ -140,7 +140,9 @@ The postal-sg Steps couldn't be checked by eye on localhost, because R2's CORS r
 
 **Left for phase 5:** the Story list imports every Story's `metadata` eagerly, and a Draft's code is still built as an unlinked chunk in production. Neither is routable or listed.
 
-**Coolify (not done yet; needs the owner's go-ahead):** add `PUBLIC_INCLUDE_DRAFTS=true` as a **preview-only** build variable, and turn on PR previews.
+**Coolify (done 2026-11-15):** `PUBLIC_INCLUDE_DRAFTS` is `true` for preview deployments and `false` for production, and PR previews are on (repository members only), at `{{pr_id}}.stories.bearylogical.net`.
+
+**Still to do:** there is no DNS record for `*.stories.bearylogical.net`, so previews build but can't be opened. Cloudflare's free Universal SSL covers `*.bearylogical.net` but not a second-level wildcard such as `*.stories.bearylogical.net`. So either add a DNS-only (grey-cloud) wildcard record pointing at the Coolify server and let Coolify get the certificates, or change the preview URL template to one level, e.g. `stories-pr-{{pr_id}}.bearylogical.net`.
 
 ---
 

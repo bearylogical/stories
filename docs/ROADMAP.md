@@ -13,7 +13,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
 | 2. Data | Merged. Left: a deploy takes about 85 s (target 60 s), and Coolify still pulls `nginx:alpine` unpinned | bearylogical/stories#4 |
 | 3. Scrollytelling | Merged. Left: the Coolify preview steps (needs the owner's go-ahead) | bearylogical/stories#5 |
-| 4. postal-sg rebuild | In progress (PR open) | PR_LINK |
+| 4. postal-sg rebuild | In progress (PR open) | bearylogical/stories#9 |
 | 5. The rest | Not started (needs 3) | n/a |
 
 Update this table when a phase starts, opens a PR, or merges.

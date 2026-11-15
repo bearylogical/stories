@@ -12,7 +12,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | --- | --- | --- |
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
 | 2. Data | Not started | n/a |
-| 3. Scrollytelling | In progress (PR open; Coolify preview steps left) | PR_LINK |
+| 3. Scrollytelling | In progress (PR open; Coolify preview steps left) | bearylogical/stories#5 |
 | 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
 | 5. The rest | Not started (needs 3) | n/a |
 
@@ -120,7 +120,7 @@ Open a session in this repo and say:
 
 **Done when:** a small sample Story in `src/stories/_example/` (always a Draft) shows Overlay and Sidecar, a Scrub Step and a MapStage, and type-checks cleanly.
 
-**Done in PR_LINK:**
+**Done in bearylogical/stories#5:**
 - `svelte.config.js` adds mdsvex for `.svx`. Runes work inside Stories (the sample uses `$derived`).
 - `src/lib/stories/`: the Story list (`allStories`, `stories`, `publishedStories`, `getStory`, `loadStoryComponent`) and `frontmatter.ts`, which throws one error listing every problem. It runs while prerendering, so a bad Story fails `pnpm build`. Slugs starting with `_` are samples and must stay Drafts.
 - `includeDrafts` is the compile-time constant `__INCLUDE_DRAFTS__`, set in `vite.config.ts`: on for `vite dev`, otherwise only with `PUBLIC_INCLUDE_DRAFTS=true`. `pnpm build:drafts` and `pnpm preview:drafts` set it.

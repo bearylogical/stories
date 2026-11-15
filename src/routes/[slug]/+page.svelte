@@ -1,19 +1,12 @@
 <script lang="ts">
 	import Seo from '$lib/site/Seo.svelte';
 	import DraftBanner from '$lib/stories/DraftBanner.svelte';
+	import { formatDate } from '$lib/stories/format';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const story = $derived(data.story);
 	const Body = $derived(data.component);
-
-	const formatDate = (iso: string) =>
-		new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-SG', {
-			day: 'numeric',
-			month: 'long',
-			year: 'numeric',
-			timeZone: 'UTC'
-		});
 </script>
 
 <Seo

@@ -13,9 +13,11 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"data:publish": "node scripts/data/publish.js",
-		"check:story": "node scripts/check-story.js"
+		"check:story": "node scripts/check-story.js",
+		"new-story": "node scripts/new-story.js"
 	},
 	"devDependencies": {
+		"@clack/prompts": "^1.9.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.22.2",
 		"@sveltejs/vite-plugin-svelte": "^4.0.4",

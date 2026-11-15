@@ -51,6 +51,9 @@
 		},
 		get active() {
 			return active;
+		},
+		get progress() {
+			return progress;
 		}
 	});
 

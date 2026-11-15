@@ -1,10 +1,12 @@
 <!--
-	postal-sg's sources and layers, inside its MapStage. Which layers show, and where the camera
-	goes, is up to the View; this component only fetches the points the View's `pattern` asks for.
-	Layer ids are listed in ./views.ts.
+	postal-sg's sources and layers, inside its MapStage. Which layers show, where the camera
+	goes and how the points are filtered is up to the View (see `withPattern` in ./views.ts).
+	This component loads the points once, fetches the small sets that need addresses, and
+	drives the Sweep from the Scrub's progress. Layer ids are listed in ./views.ts.
 -->
 <script lang="ts">
 	import {
+		CircleLayer,
 		FillLayer,
 		GeoJSONSource,
 		HeatmapLayer,
@@ -16,35 +18,55 @@
 	import districtCentersUrl from './district-centers.geojson?url';
 	import Buildings from './Buildings.svelte';
 	import { NO_POINTS, postal, type PostalPoints } from './postal-data.svelte';
-	import { BUILDINGS, type PostalView } from './views';
+	import {
+		DIGIT_COLORS,
+		HIGHLIGHT,
+		MATCH_COLOR,
+		PLACES,
+		STORY_PATTERNS,
+		type PostalView
+	} from './views';
 
 	interface Props {
 		view: PostalView;
+		progress: number;
 	}
 
-	let { view }: Props = $props();
+	let { view, progress }: Props = $props();
 
-	/** Above this zoom the heatmap gives way to buildings. */
-	const BUILDING_ZOOM_START = 16;
+	/** Above this zoom the heatmap gives way to dots and buildings. */
+	const HEATMAP_MAX_ZOOM = 16;
 
 	const mapCtx = getMapContext();
-	mapCtx.waitForStyleLoaded((map) => {
-		// The base map's own 3D buildings would hide ours.
-		if (map.getLayer('Building 3D')) map.setLayoutProperty('Building 3D', 'visibility', 'none');
-		// Load the points once the map has drawn, so they don't hold up the first tiles.
-		map.once('idle', () => postal.load().catch(() => {}));
+	// Once the map exists: waitForStyleLoaded ignores calls made before that.
+	$effect(() => {
+		if (!mapCtx.map) return;
+		mapCtx.waitForStyleLoaded((map) => {
+			// Load the points once the map has drawn, so they don't hold up the first tiles; then
+			// look up the Steps' own patterns, so their addresses are ready before the reader is.
+			map.once('idle', () =>
+				postal
+					.load()
+					.then(() => postal.prefetch(STORY_PATTERNS))
+					.catch(() => {})
+			);
+		});
 	});
 
-	let points: PostalPoints = $state.raw(NO_POINTS);
+	/** The View's points, with addresses, when there are few enough. */
+	let selection: PostalPoints | null = $state.raw(null);
 
 	$effect(() => {
 		const pattern = view.pattern;
-		if (!pattern) return;
+		if (!pattern) {
+			selection = null;
+			return;
+		}
 		let live = true;
 		postal
 			.query(pattern)
 			.then((result) => {
-				if (live) points = result.features;
+				if (live) selection = result.features;
 			})
 			.catch(() => {});
 		return () => {
@@ -52,10 +74,36 @@
 		};
 	});
 
-	const showBuildings = $derived(!view.layers || view.layers.some((id) => BUILDINGS.includes(id)));
+	const showBuildings = $derived(!view.layers || view.layers.some((id) => HIGHLIGHT.includes(id)));
+
+	// The Sweep: the selection's points (sorted by code) appear one street at a time as the
+	// reader scrolls. `sweepIndex` is shared with the Step's caption.
+	const sweepPoints = $derived(view.sweep ? (selection ?? NO_POINTS) : NO_POINTS);
+	const sweepCode = $derived.by(() => {
+		const features = sweepPoints.features;
+		if (features.length === 0) return undefined;
+		const index = Math.min(features.length - 1, Math.floor(progress * features.length));
+		return features[index].properties.POSTAL;
+	});
+
+	$effect(() => {
+		const map = mapCtx.map;
+		const code = sweepCode;
+		if (!map || !map.getLayer('postal-sweep')) return;
+		// Set here, not through the View: it changes on every scroll frame.
+		map.setFilter('postal-sweep', code ? ['<=', ['get', 'POSTAL'], code] : null);
+		map.setFilter('postal-sweep-label', ['==', ['get', 'POSTAL'], code ?? '']);
+	});
+
+	const digitColor = [
+		'match',
+		['slice', ['get', 'POSTAL'], 0, 1],
+		...DIGIT_COLORS.flatMap((color, digit) => [String(digit), color]),
+		DIGIT_COLORS[8]
+	] as const;
 </script>
 
-<Buildings {points} active={showBuildings} />
+<Buildings points={selection} active={showBuildings} />
 
 <GeoJSONSource id="districts" data={urls.districts} promoteId="name">
 	<FillLayer
@@ -64,7 +112,7 @@
 		maxzoom={14}
 		paint={{
 			'fill-color': '#006000',
-			'fill-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 14, 0.1]
+			'fill-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 14, 0.1]
 		}}
 	/>
 	<LineLayer
@@ -86,41 +134,23 @@
 			'text-halo-blur': 1
 		}}
 		layout={{
-			'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+			'text-font': ['Roboto Bold', 'Noto Sans Bold'],
 			'text-allow-overlap': false,
 			'text-field': ['get', 'district'],
-			'text-size': ['interpolate', ['linear'], ['zoom'], 10, 12, 14, 14, 18, 16],
-			'text-offset': [0, 0]
+			'text-size': ['interpolate', ['linear'], ['zoom'], 10, 12, 14, 14, 18, 16]
 		}}
 	/>
 </GeoJSONSource>
 
-<GeoJSONSource
-	id="postal-points"
-	data={points}
-	cluster={true}
-	clusterMaxZoom={17}
-	clusterRadius={3}
-	promoteId="POSTAL"
->
+<!-- Every point, once. Views filter it; nothing re-sends it. -->
+<GeoJSONSource id="postal-points" data={postal.allPoints ?? NO_POINTS}>
 	<HeatmapLayer
 		id="postal-heatmap"
 		minzoom={9}
-		maxzoom={BUILDING_ZOOM_START}
+		maxzoom={HEATMAP_MAX_ZOOM}
 		paint={{
-			// Clusters of nearby codes weigh more, up to 5 codes; a lone code weighs 1.
-			'heatmap-weight': [
-				'interpolate',
-				['linear'],
-				['coalesce', ['get', 'point_count'], 5],
-				0,
-				0,
-				1,
-				0.5,
-				5,
-				1
-			],
-			'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 19, 3],
+			'heatmap-weight': 1,
+			'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 9, 0.04, 12, 0.15, 16, 0.8],
 			'heatmap-color': [
 				'interpolate',
 				['linear'],
@@ -138,23 +168,96 @@
 				1,
 				'rgb(178,24,43)'
 			],
-			'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 5, 19, 8],
-			'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 10, 1, 22, 0]
+			'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 13, 7, 16, 14],
+			// Fade out as the dots and buildings take over.
+			'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 13, 1, HEATMAP_MAX_ZOOM, 0]
 		}}
 	/>
+	<CircleLayer
+		id="postal-digits"
+		paint={{
+			'circle-color': digitColor as never,
+			'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 1.8, 14, 3.5],
+			'circle-opacity': 0.8
+		}}
+	/>
+	<CircleLayer
+		id="postal-dots"
+		paint={{
+			'circle-color': '#003c57',
+			'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 1, 13, 2.5, 16, 4],
+			'circle-stroke-color': '#fff',
+			'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 12, 0, 13, 0.5, 18, 1.5]
+		}}
+	/>
+</GeoJSONSource>
+
+<!-- The View's points with addresses (small sets only). -->
+<GeoJSONSource id="postal-selection" data={selection ?? NO_POINTS}>
 	<SymbolLayer
 		id="postal-addresses"
 		layout={{
-			'text-field': ['format', 'Address: ', {}, ['get', 'ADDRESS'], {}],
-			'text-variable-anchor': ['right', 'top'],
-			'text-offset': [0.5, 0.1],
-			'text-allow-overlap': false,
-			'text-ignore-placement': false,
-			'text-justify': 'left'
+			'text-font': ['Roboto Regular', 'Noto Sans Regular'],
+			'text-field': ['get', 'ADDRESS'],
+			'text-size': 12,
+			'text-max-width': 10,
+			'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
+			'text-radial-offset': 0.6,
+			'text-justify': 'auto',
+			'text-allow-overlap': false
 		}}
 		paint={{
-			'text-halo-width': ['interpolate', ['linear'], ['zoom'], 8, 2, 13, 1],
-			'text-opacity': ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 0.9]
+			'text-color': '#003c57',
+			'text-halo-color': '#fff',
+			'text-halo-width': 1.5
+		}}
+	/>
+</GeoJSONSource>
+
+<GeoJSONSource id="postal-sweep" data={sweepPoints}>
+	<CircleLayer
+		id="postal-sweep"
+		paint={{
+			'circle-color': MATCH_COLOR,
+			'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2, 15, 4],
+			'circle-stroke-color': '#fff',
+			'circle-stroke-width': 0.5
+		}}
+	/>
+	<SymbolLayer
+		id="postal-sweep-label"
+		layout={{
+			'text-font': ['Roboto Bold', 'Noto Sans Bold'],
+			'text-field': ['get', 'ADDRESS'],
+			'text-size': 14,
+			'text-max-width': 12,
+			'text-anchor': 'left',
+			'text-offset': [0.8, 0],
+			'text-allow-overlap': true,
+			'icon-allow-overlap': true
+		}}
+		paint={{
+			'text-color': '#000',
+			'text-halo-color': '#fff',
+			'text-halo-width': 2
+		}}
+	/>
+</GeoJSONSource>
+
+<GeoJSONSource id="annotations" data={PLACES}>
+	<SymbolLayer
+		id="annotations"
+		layout={{
+			'text-font': ['Roboto Italic', 'Noto Sans Italic'],
+			'text-field': ['get', 'name'],
+			'text-size': 13,
+			'text-max-width': 8,
+			'text-allow-overlap': true
+		}}
+		paint={{
+			'text-color': '#222',
+			'text-halo-color': '#fff',
+			'text-halo-width': 1.5
 		}}
 	/>
 </GeoJSONSource>

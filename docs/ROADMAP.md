@@ -11,9 +11,9 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | Phase | Status | Where |
 | --- | --- | --- |
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
-| 2. Data | PR open: Story Data published and Cloudflare set up; Coolify image pin and deploy timing left | bearylogical/stories#4 |
-| 3. Scrollytelling | In progress (PR open; Coolify preview steps left) | bearylogical/stories#5 |
-| 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
+| 2. Data | Merged. Left: a deploy takes about 85 s (target 60 s), and Coolify still pulls `nginx:alpine` unpinned | bearylogical/stories#4 |
+| 3. Scrollytelling | Merged. Left: the Coolify preview steps (needs the owner's go-ahead) | bearylogical/stories#5 |
+| 4. postal-sg rebuild | In progress (PR open) | PR_LINK |
 | 5. The rest | Not started (needs 3) | n/a |
 
 Update this table when a phase starts, opens a PR, or merges.
@@ -197,6 +197,27 @@ The postal-sg Steps couldn't be checked by eye on localhost, because R2's CORS r
 5. Delete the old route, `Scroller.svelte`, and the `$lib` modules nothing uses any more.
 
 **Done when:** the screenshot comparison looks the same, `/postal-sg/index.html` still works, `pnpm check` has no errors in the touched files, and the first-load budget from phase 2 is met.
+
+**Done in the phase 4 PR:**
+
+- `src/stories/postal-sg/` holds the Story (`index.svx`, `status: published`) and everything only it uses: `PostalLayers.svelte` (districts, heatmap, address labels), `Buildings.svelte`, `Explorer.svelte`, `Counter.svelte`, both workers and `district-centers.geojson` (moved from `src/assets/`, which is gone).
+- `views.ts` names the layer groups and cameras the Steps' Views are built from. A `PostalView` is a `MapView` plus `pattern` (which postal codes the points show). The old page worked out the camera at run time from each pattern's bounds; the Views now say it directly, using the same centres, so any Step can be reached directly. Step 4's camera sits a little south of sector 54 so the sector shows above the Step card.
+- The Explorer is the last Step. It writes its Step's View (`bind:view`) as the reader types, so it moves the map through the same Stage contract as every other Step.
+- Lazy loading (`postal-data.svelte.ts`): the points worker is a separate chunk started once the map has drawn its first frame. The buildings worker (296 kB, turf) loads the first time a View shows buildings. Results are cached per pattern.
+- Gone: the manual scroll handler, the flag state (`showHeatmap`, `showDistricts`, `renderHeatmap`, …), `Scroller.svelte`, `Section.svelte`, `Filler.svelte`, `Placeholder.svelte`, `DynamicPostalCodeTable.svelte`, `colors.ts`, `compare.ts`, `expressions.ts`, `types.ts`, `utils.js`, `loader.js`, both `stores` files, and the packages `parse-color`, `d3-color`, `@types/d3-color` and `@turf/boolean-intersects`. `pnpm check` reports 0 errors (6 CSS warnings in `Header.svelte`).
+- `src/hooks.ts` adds a `reroute` from `/<slug>/index.html` to `/<slug>/`. Without it, the `[slug]` route showed "Story not found" once `/postal-sg/index.html` hydrated.
+- `pnpm check:story <slug>` (`scripts/check-story.js`, Playwright 1.52) saves a screenshot per Step to `.story-check/<slug>/<label>/` and writes `compare.html` with every label side by side. It also reports the bytes downloaded before the first Step, worker requests included. Use `--steps "[slot=foreground] > section"` for a pre-phase-4 build.
+
+**Compared with `main` before this phase** (1280×800, cache off, preview build):
+
+- Downloaded before the first Step: 2.29 MB new, 2.15 MB old (budget 3 MB). By the last Step: 5.00 MB new, 6.39 MB old.
+- The Steps show the same map at the same place. Differences:
+  - the Steps are phase 3's cards
+  - the intro is the shared Story header, and the acknowledgements are the Sources list at the end (the ONS Scroller credit and the Svelte 5 migration note are gone)
+  - the map fills the viewport instead of a 16:9 box
+  - Steps 5–6 and the Explorer colour the matching buildings orange. The old page meant to, but its buildings usually stayed grey because it recoloured on zoom events before the tiles had loaded.
+  - the Explorer is its own Step after "Try it yourself!" instead of replacing it, and the page ends with the Sources list rather than the map
+  - Step 5 shows `54[2-4]264`, as the old code did (an earlier note here said `54[1-4]264`)
 
 ---
 

@@ -12,16 +12,15 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
-		"data:publish": "node scripts/data/publish.js"
+		"data:publish": "node scripts/data/publish.js",
+		"check:story": "node scripts/check-story.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.22.2",
 		"@sveltejs/vite-plugin-svelte": "^4.0.4",
 		"@tailwindcss/vite": "^4.1.11",
-		"@turf/boolean-intersects": "^7.2.0",
 		"@turf/turf": "^7.2.0",
-		"@types/d3-color": "^3.1.3",
 		"@types/eslint": "^9.6.1",
 		"@types/geojson": "^7946.0.16",
 		"eslint": "^9.30.1",
@@ -29,7 +28,7 @@
 		"eslint-plugin-svelte": "^2.46.1",
 		"globals": "^15.15.0",
 		"mdsvex": "^0.12.8",
-		"parse-color": "^1.0.0",
+		"playwright": "1.52.0",
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"svelte": "^5.35.2",
@@ -42,7 +41,6 @@
 	"type": "module",
 	"packageManager": "pnpm@9.8.0+sha256.56a9e76b51796ca7f73b85e44cf83712862091f4d498c0ce4d5b7ecdc6ba18f7",
 	"dependencies": {
-		"d3-color": "^3.1.0",
 		"gsap": "^3.13.0",
 		"maplibre-gl": "^4.7.1",
 		"svelte-maplibre-gl": "^1.0.0"

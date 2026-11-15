@@ -1,0 +1,124 @@
+---
+title: Topography of Singapore Postal Codes
+published: 2024-09-01
+updated: 2025-07-06
+summary: A short explainer on how Singapore's six-digit postal codes map the island.
+image: /web_thumb.png
+status: published
+sources:
+  - label: Postal code data from OneMap
+    href: https://www.onemap.gov.sg/
+  - label: Postal district boundaries from Timothy's Singapore Postal Districts
+    href: https://www.penang-traveltips.com/singapore/postal-districts.htm
+  - label: Wikipedia on Singapore's postal code system
+    href: https://en.wikipedia.org/wiki/Postal_codes_in_Singapore
+---
+
+<script lang="ts">
+	import { Scrolly, Step } from '$lib/scrolly';
+	import { MapStage } from '$lib/stages';
+	import { streetsStyle } from '$lib/styles';
+	import Em from '$lib/ui/Em.svelte';
+	import Counter from './Counter.svelte';
+	import Explorer from './Explorer.svelte';
+	import PostalLayers from './PostalLayers.svelte';
+	import { postal } from './postal-data.svelte';
+	import {
+		ADDRESSES,
+		BLOCK_542264,
+		BLOCKS_264,
+		BUILDINGS,
+		DISTRICTS,
+		EXPLORER_START,
+		HEATMAP,
+		HOME,
+		SECTOR_54,
+		SECTOR_54_264,
+		type PostalView
+	} from './views';
+
+	// The Explorer moves the map as the reader types, through its Step's View.
+	let explorer: PostalView = $state(EXPLORER_START);
+</script>
+
+Singapore's postal code system not only aids mail delivery but also offers a unique view of the city's layout and organization. It's like a hidden map showing how the island is structured and divided.
+
+This small visualization illustrates Singapore's postal code system and is inspired by Ben Fry's [zipdecode](https://benfry.com/zipdecode/).
+
+Scroll down to learn more!
+
+<Scrolly layout="overlay" label="Map of Singapore's postal codes">
+{#snippet stage(view, progress)}
+<MapStage {view} {progress} style={streetsStyle} duration={3000}>
+<PostalLayers {view} />
+</MapStage>
+{/snippet}
+
+<Step view={{ camera: HOME, layers: DISTRICTS }} />
+
+<Step view={{ camera: HOME, layers: DISTRICTS }}>
+
+Beginning in the 1950s, Singapore was originally split into <Em color="#206095">28</Em> Postal Districts.
+
+</Step>
+
+<Step view={{ camera: HOME, layers: HEATMAP, pattern: '*' }}>
+
+Fast forward to September 1995, the postal code uses a <Em color="#206095">6</Em> digit system which divides Singapore into 80 postal sectors.
+
+<Em color="#206095">{postal.total ?? '…'}</Em> postal codes are displayed on this map to illustrate its distribution.
+
+</Step>
+
+<Step view={{ camera: SECTOR_54, layers: HEATMAP, pattern: '54*' }}>
+
+Singapore's 6 digit postal code system works as follows:
+
+<h2><Em color="#003C57">54</Em><span>2264</span></h2>
+
+The first two digits of each postal code denote a postal sector.
+
+</Step>
+
+<Step view={{ camera: BLOCKS_264, layers: BUILDINGS, pattern: '54[2-4]264' }}>
+
+<h2>542<Em color="#003C57">264</Em></h2>
+
+The last 3 digits are used to indicate residential properties in an apartment block.
+
+</Step>
+
+<Step view={{ camera: BLOCK_542264, layers: BUILDINGS, pattern: '542264' }}>
+
+<h2>54<Em color="#003C57">2</Em>264</h2>
+
+For residential blocks that share the same number, the 3rd digit is used to differentiate between blocks.
+
+</Step>
+
+<Step view={{ camera: SECTOR_54_264, layers: [...HEATMAP, ...ADDRESSES], pattern: '54*264' }}>
+
+<h2>54<Em color="#003C57"><Counter /></Em>264</h2>
+
+Within the same postal sector, postal codes are given out based on street names, from A to Z. In each area:
+
+1. Streets starting with 'A' get codes first
+2. Then streets starting with 'B', and so on
+3. The third number in the code often matches something about the street name
+
+This system is used for homes, shops, and factories.
+
+</Step>
+
+<Step view={EXPLORER_START}>
+
+<h2>Try it yourself!</h2>
+
+Scroll below to try some postal codes!
+
+</Step>
+
+<Step view={explorer}>
+<Explorer bind:view={explorer} />
+</Step>
+</Scrolly>

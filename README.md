@@ -66,4 +66,4 @@ The Publication is a fully static site (`@sveltejs/adapter-static`, every page p
 
 ## Project language
 
-Terms such as Story, Stage, Step and View are defined in [CONTEXT.md](CONTEXT.md). Architectural decisions are in [docs/adr/](docs/adr/).
+Terms such as Story, Stage, Step and View are defined in [CONTEXT.md](CONTEXT.md). Architectural decisions are in [docs/adr/](docs/adr/). The phased plan and its status are in [docs/ROADMAP.md](docs/ROADMAP.md).

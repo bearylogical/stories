@@ -21,6 +21,7 @@
 	let lastFound: string | undefined = $state();
 
 	const valid = $derived(/^\d{0,6}$/.test(value));
+	const unique = $derived(result?.unique ?? postal.unique);
 	const count = $derived(result?.count ?? postal.total);
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -47,7 +48,7 @@
 				result = found;
 				// Nothing found: leave the map where it was.
 				if (found.count === 0) return;
-				lastFound = found.features.features[0]?.properties.POSTAL;
+				lastFound = found.features?.features[0]?.properties.POSTAL ?? lastFound;
 				view = explorerView(typed, found);
 			})
 			.catch(() => {});
@@ -82,7 +83,12 @@
 	{/if}
 
 	<p aria-live="polite">
-		<Em color="#206095">{count ?? '…'}</Em> Postal Codes are currently shown.
+		<Em tone="highlight">{unique?.toLocaleString('en-SG') ?? '…'}</Em>
+		{unique === 1
+			? 'postal code'
+			: 'postal codes'}{#if count !== undefined && count !== unique}{' '}({count.toLocaleString(
+				'en-SG'
+			)} addresses){/if} shown.
 	</p>
 </div>
 
@@ -103,7 +109,7 @@
 		margin: 5px 0 0;
 	}
 	.error {
-		color: red;
+		color: var(--color-ink);
 		font-size: 0.9em;
 		font-style: italic;
 	}

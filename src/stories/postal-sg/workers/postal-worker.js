@@ -1,25 +1,25 @@
 // postal-worker.js
 //
 // Loads postal-sg's packed postal points (src/lib/data/postal-points.js,
-// docs/adr/0005) and filters them by pattern across the whole island.
-// Address text is fetched per sector, only for small result sets (zoomed into
-// buildings, or a specific code in the Explorer).
+// docs/adr/0005), hands the map every point once, and answers pattern queries
+// (../pattern.js) with counts, bounds and, for small results, the points
+// themselves with their addresses. The map filters its own copy of the points
+// with the same pattern, so a query never re-sends the whole island.
 //
-// Messages in:  LOAD_DATA { url }, FILTER { pattern, maxResults }
-// Messages out: LOAD_COMPLETE, FILTER_COMPLETE, ERROR. Features are GeoJSON
-// Points with properties { POSTAL, ADDRESS? }.
+// Messages in:  LOAD_DATA { url }, FILTER { pattern }
+// Messages out: LOAD_COMPLETE, FILTER_COMPLETE, ERROR.
 
 import { decodePostalPoints, formatPostal, sectorOf } from '$lib/data/postal-points.js';
 import { urls } from '$lib/data/postal-sg.js';
+import { matcher } from '../pattern.js';
 
-/** Fetch addresses only when a result has at most this many points... */
-const ADDRESS_MAX_POINTS = 2000;
-/** ...spread over at most this many sectors. */
+/** Return the matching points (not just counts) for results up to this size... */
+const SELECTION_MAX_POINTS = 8000;
+/** ...and add their addresses when they span at most this many sectors. */
 const ADDRESS_MAX_SECTORS = 4;
 const COORD_DECIMALS = 6; // ~0.1 m; Float32 holds about this much anyway
 
-/** @typedef {{ count: number, codes: Uint32Array, lons: Float32Array, lats: Float32Array }} Points */
-/** @type {Points} set by LOAD_DATA before any FILTER */
+/** @type {{ count: number, codes: Uint32Array, lons: Float32Array, lats: Float32Array }} */
 let points = /** @type {any} */ (null);
 /** @type {string[]} zero-padded postal code per point */
 let postals = [];
@@ -32,7 +32,7 @@ const addressCache = new Map();
 const round = (x) => Math.round(x * 10 ** COORD_DECIMALS) / 10 ** COORD_DECIMALS;
 
 /** @param {string} url */
-async function loadPostalCodes(url) {
+async function load(url) {
 	try {
 		const response = await fetch(url);
 		if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
@@ -44,11 +44,15 @@ async function loadPostalCodes(url) {
 			if (!sectorStart.has(sector)) sectorStart.set(sector, i);
 		}
 		const all = Array.from({ length: points.count }, (_, i) => i);
+		// As text: cloning one string to the page is cheap, and MapLibre parses it in its
+		// own worker, so the page never holds 140,000 feature objects.
+		const geojson = JSON.stringify(toFeatureCollection(all, null));
 		return {
 			success: true,
+			geojson,
 			count: points.count,
-			features: toFeatureCollection(all, null),
-			simplified: [],
+			unique: countUnique(all),
+			sectors: sectorStart.size,
 			bounds: calculateBounds(all)
 		};
 	} catch (error) {
@@ -72,9 +76,13 @@ function loadSectorAddresses(sector) {
 	return /** @type {Promise<string[] | null>} */ (addressCache.get(sector));
 }
 
+/** "264B COMPASSVALE BOW THE CORIS SINGAPORE 542264" → "264B COMPASSVALE BOW THE CORIS" */
+/** @param {string} address */
+const shortAddress = (address) => address.replace(/\s+SINGAPORE\s+\d{6}$/, '');
+
 /** @param {number[]} indices @returns {Promise<Map<number, string> | null>} */
 async function addressesFor(indices) {
-	if (indices.length === 0 || indices.length > ADDRESS_MAX_POINTS) return null;
+	if (indices.length === 0) return null;
 	const sectors = [...new Set(indices.map((i) => sectorOf(points.codes[i])))];
 	if (sectors.length > ADDRESS_MAX_SECTORS) return null;
 	const lists = await Promise.all(sectors.map(loadSectorAddresses));
@@ -82,50 +90,28 @@ async function addressesFor(indices) {
 	const result = new Map();
 	for (const i of indices) {
 		const sector = postals[i].slice(0, 2);
-		const list = bySector.get(sector);
-		const address = list?.[i - (sectorStart.get(sector) ?? 0)];
-		if (address !== undefined) result.set(i, address);
+		const address = bySector.get(sector)?.[i - (sectorStart.get(sector) ?? 0)];
+		if (address !== undefined) result.set(i, shortAddress(address));
 	}
 	return result;
 }
 
-// Pattern matching: "*" wildcards, a single "[a-b]" digit range, or an exact code.
-/** @param {string} pattern @returns {(postal: string) => boolean} */
-function createFilterFunction(pattern) {
-	if (!pattern || pattern === '*') return () => true;
-
-	const rangeMatch = pattern.match(/^(.+)\[(\d)-(\d)\](.*)$/);
-	if (rangeMatch) {
-		const [, prefix, start, end, suffix] = rangeMatch;
-		const regex = new RegExp(`^${escapeRegex(prefix)}[${start}-${end}]${escapeRegex(suffix)}$`);
-		return (postal) => regex.test(postal);
-	}
-
-	if (pattern.includes('*')) {
-		const regex = new RegExp(
-			`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`
-		);
-		return (postal) => regex.test(postal);
-	}
-
-	return (postal) => postal === pattern;
-}
-
-/** @param {string} string */
-function escapeRegex(string) {
-	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** @param {string} pattern @param {number} [maxResults] @returns {number[]} indices of matching points */
-function filterIndices(pattern, maxResults = -1) {
-	if (!points || maxResults === 0) return [];
-	const limit = maxResults < 0 ? points.count : maxResults;
-	const match = createFilterFunction(pattern);
+/** @param {string} pattern @returns {number[]} indices of matching points */
+function filterIndices(pattern) {
+	if (!points) return [];
+	const match = matcher(pattern);
 	const out = [];
-	for (let i = 0; i < points.count && out.length < limit; i++) {
-		if (match(postals[i])) out.push(i);
-	}
+	for (let i = 0; i < points.count; i++) if (match(postals[i])) out.push(i);
 	return out;
+}
+
+/** Codes are sorted, so repeats sit next to each other. @param {number[]} indices */
+function countUnique(indices) {
+	let unique = 0;
+	for (let k = 0; k < indices.length; k++) {
+		if (k === 0 || points.codes[indices[k]] !== points.codes[indices[k - 1]]) unique++;
+	}
+	return unique;
 }
 
 /** @param {number[]} indices @param {Map<number, string> | null} addresses */
@@ -172,23 +158,23 @@ self.onmessage = async function (e) {
 
 	switch (type) {
 		case 'LOAD_DATA': {
-			const result = await loadPostalCodes(data?.url ?? urls.points);
-			self.postMessage({ type: 'LOAD_COMPLETE', data: result });
+			self.postMessage({ type: 'LOAD_COMPLETE', data: await load(data?.url ?? urls.points) });
 			break;
 		}
 
 		case 'FILTER': {
-			const { pattern, maxResults } = data;
-			const indices = filterIndices(pattern, maxResults);
-			const addresses = await addressesFor(indices);
+			const { pattern } = data;
+			const indices = filterIndices(pattern);
+			const small = indices.length <= SELECTION_MAX_POINTS;
+			const addresses = small ? await addressesFor(indices) : null;
 			self.postMessage({
 				type: 'FILTER_COMPLETE',
 				data: {
-					features: toFeatureCollection(indices, addresses),
-					count: indices.length,
-					bounds: calculateBounds(indices),
 					pattern,
-					simplified: []
+					count: indices.length,
+					unique: countUnique(indices),
+					bounds: calculateBounds(indices),
+					features: small ? toFeatureCollection(indices, addresses) : null
 				}
 			});
 			break;

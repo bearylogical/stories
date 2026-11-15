@@ -1,8 +1,8 @@
 ---
 title: Topography of Singapore Postal Codes
 published: 2024-09-01
-updated: 2025-07-06
-summary: A short explainer on how Singapore's six-digit postal codes map the island.
+updated: 2026-11-15
+summary: Six digits take you from a corner of the island to one block of flats, and tell you whether it is a flat or a house.
 image: /covers/postal-sg.jpg
 status: published
 sources:
@@ -16,97 +16,131 @@ sources:
 
 <script lang="ts">
 	import { Scrolly, Step } from '$lib/scrolly';
-	import { MapStage } from '$lib/stages';
-	import { streetsStyle } from '$lib/styles';
 	import Em from '$lib/ui/Em.svelte';
-	import Counter from './Counter.svelte';
 	import Explorer from './Explorer.svelte';
-	import PostalLayers from './PostalLayers.svelte';
-	import { postal } from './postal-data.svelte';
+	import SweepCaption from './SweepCaption.svelte';
 	import {
 		ADDRESSES,
+		ANNOTATIONS,
 		BLOCK_542264,
 		BLOCKS_264,
 		BUILDINGS,
+		DIGIT_COLORS,
+		DIGITS,
 		DISTRICTS,
+		DOTS,
 		EXPLORER_START,
 		HEATMAP,
+		HIGHLIGHT,
 		HOME,
+		PRIVATE_54,
 		SECTOR_54,
 		SECTOR_54_264,
+		SWEEP,
 		type PostalView
 	} from './views';
+
+	// The map (MapLibre is most of the page's JavaScript) loads after the text is on screen.
+	const stageModule = import('./PostalStage.svelte');
 
 	// The Explorer moves the map as the reader types, through its Step's View.
 	let explorer: PostalView = $state(EXPLORER_START);
 </script>
 
-Singapore's postal code system not only aids mail delivery but also offers a unique view of the city's layout and organization. It's like a hidden map showing how the island is structured and divided.
+Every address in Singapore has a six-digit postal code. Read it from left to right and it narrows down from a corner of the island to a single building. Along the way it also tells you whether that building is a block of public housing flats or a private home.
 
-This small visualization illustrates Singapore's postal code system and is inspired by Ben Fry's [zipdecode](https://benfry.com/zipdecode/).
-
-Scroll down to learn more!
+This map follows one code, 542264, digit by digit. It was inspired by Ben Fry's [zipdecode](https://benfry.com/zipdecode/).
 
 <Scrolly layout="overlay" label="Map of Singapore's postal codes">
 {#snippet stage(view, progress)}
-<MapStage {view} {progress} style={streetsStyle} duration={3000}>
-<PostalLayers {view} />
-</MapStage>
+{#await stageModule then { default: PostalStage }}
+<PostalStage {view} {progress} />
+{/await}
 {/snippet}
-
-<Step view={{ camera: HOME, layers: DISTRICTS }} />
 
 <Step view={{ camera: HOME, layers: DISTRICTS }}>
 
-Beginning in the 1950s, Singapore was originally split into <Em color="#206095">28</Em> Postal Districts.
+<h2>How six digits map an island</h2>
+
+Scroll down to follow a postal code to its door.
 
 </Step>
 
-<Step view={{ camera: HOME, layers: HEATMAP, pattern: '*' }}>
+<Step view={{ camera: HOME, layers: DISTRICTS }}>
 
-Fast forward to September 1995, the postal code uses a <Em color="#206095">6</Em> digit system which divides Singapore into 80 postal sectors.
+From 1950, Singapore's mail was sorted into <Em tone="highlight">28</Em> postal districts.
 
-<Em color="#206095">{postal.total ?? '…'}</Em> postal codes are displayed on this map to illustrate its distribution.
-
-</Step>
-
-<Step view={{ camera: SECTOR_54, layers: HEATMAP, pattern: '54*' }}>
-
-Singapore's 6 digit postal code system works as follows:
-
-<h2><Em color="#003C57">54</Em><span>2264</span></h2>
-
-The first two digits of each postal code denote a postal sector.
+They never quite went away. Property listings still use them: D9 is Orchard, D10 is Bukit Timah and Holland, and D15 is Katong and Marine Parade.
 
 </Step>
 
-<Step view={{ camera: BLOCKS_264, layers: BUILDINGS, pattern: '54[2-4]264' }}>
+<Step view={{ camera: HOME, layers: [...HEATMAP, ...ANNOTATIONS], pattern: '*' }}>
 
-<h2>542<Em color="#003C57">264</Em></h2>
+In September 1995 the districts gave way to a <Em tone="highlight">6</Em>-digit code. Today OneMap lists <Em tone="highlight">121,515</Em> postal codes across 141,839 addresses, in 83 sectors.
 
-The last 3 digits are used to indicate residential properties in an apartment block.
+This map counts codes, not people. A tower of a hundred flats has one code, but a row of a hundred houses has a hundred. So the hottest patches are landed estates like Katong and Serangoon Gardens, and the big HDB towns look calmer than their crowds. The empty middle is the Central Catchment's forest and reservoirs.
+
+</Step>
+
+<Step view={{ camera: HOME, layers: DIGITS, pattern: '*' }}>
+
+<h2><Em tone="highlight-strong">5</Em><span>42264</span></h2>
+
+The first digit already places you. <b>0</b> is the city centre. <b>1</b> to <b>4</b> ring it: west, centre, north-east and east. <b>5</b> to <b>8</b> reach out to the newer towns: <b>5</b> and <b>8</b> to the north-east, <b>6</b> to the west and <b>7</b> to the north.
+
+<p class="legend">
+{#each DIGIT_COLORS as color, digit (digit)}
+<span><i style:background={color}></i>{digit}</span>
+{/each}
+</p>
+
+</Step>
+
+<Step view={{ camera: SECTOR_54, layers: [...DISTRICTS, ...DOTS], pattern: '54*', district: 19 }}>
+
+<h2><Em tone="highlight-strong">54</Em><span>2264</span></h2>
+
+The first two digits are the <b>sector</b>. Sector 54 covers Sengkang and the landed streets around Kovan. It sits inside old District 19, along with sectors 53, 55 and 82, so the old map still lines up with the new one.
+
+</Step>
+
+<Step scrub view={{ camera: SECTOR_54, to: BLOCKS_264, layers: [...HEATMAP, ...DOTS, ...HIGHLIGHT], pattern: '54*' }}>
+
+Let's go down to street level. Every building with a sector 54 code turns orange as we arrive at Compassvale Bow in Sengkang.
+
+</Step>
+
+<Step view={{ camera: BLOCKS_264, layers: BUILDINGS, pattern: '54*264' }}>
+
+<h2>542<Em tone="highlight-strong">264</Em></h2>
+
+For public housing, the last three digits are the <b>block number</b>. These six towers are all Block 264.
 
 </Step>
 
 <Step view={{ camera: BLOCK_542264, layers: BUILDINGS, pattern: '542264' }}>
 
-<h2>54<Em color="#003C57">2</Em>264</h2>
+<h2>54<Em tone="highlight-strong">2</Em>264</h2>
 
-For residential blocks that share the same number, the 3rd digit is used to differentiate between blocks.
+Six blocks can't share one code, so the third digit tells them apart. 264A is 541264, 264B is <b>542264</b>, 264C is 543264 and 264D is 544264. 264F is 540264 and 264E took 548264.
 
 </Step>
 
-<Step view={{ camera: SECTOR_54_264, layers: [...HEATMAP, ...ADDRESSES], pattern: '54*264' }}>
+<Step view={{ camera: SECTOR_54_264, layers: [...DOTS, ...ADDRESSES], pattern: '54*264' }}>
 
-<h2>54<Em color="#003C57"><Counter /></Em>264</h2>
+<h2>54<Em tone="highlight-strong">?</Em>264</h2>
 
-Within the same postal sector, postal codes are given out based on street names, from A to Z. In each area:
+Zoom out and the other 54?264 codes aren't blocks at all. 545264 is a house on Saint Anne's Wood, and 546264, 547264 and 549264 are houses on Robey Crescent, Parry Avenue and Hendry Close.
 
-1. Streets starting with 'A' get codes first
-2. Then streets starting with 'B', and so on
-3. The third number in the code often matches something about the street name
+When the third digit is <b>0 to 4</b>, the code is usually an HDB block. When it is <b>5 to 9</b>, it is usually a private home, and the last digits are no longer a block number.
 
-This system is used for homes, shops, and factories.
+</Step>
+
+<Step scrub view={{ camera: PRIVATE_54, layers: SWEEP, pattern: '54[6-9]*', sweep: true }}>
+
+Private homes are numbered street by street, and backwards. As the code climbs from 546000 to 549999, street names run from S down to B: Simon Place, Rosyth, Poh Huat, Parry, Leith, Kovan, Jansen, Hillside, Florence and finally Boundary Road.
+
+<SweepCaption pattern="54[6-9]*" />
 
 </Step>
 
@@ -114,7 +148,7 @@ This system is used for homes, shops, and factories.
 
 <h2>Try it yourself!</h2>
 
-Scroll below to try some postal codes!
+Type your own postal code below, one digit at a time, and watch it narrow down. You can drag the map, too.
 
 </Step>
 
@@ -122,3 +156,24 @@ Scroll below to try some postal codes!
 <Explorer bind:view={explorer} />
 </Step>
 </Scrolly>
+
+<style>
+	.legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.75rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.legend span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-weight: bold;
+	}
+	.legend i {
+		display: inline-block;
+		width: 0.8rem;
+		height: 0.8rem;
+		border-radius: 50%;
+	}
+</style>

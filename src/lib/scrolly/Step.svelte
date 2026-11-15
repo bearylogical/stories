@@ -8,7 +8,7 @@
 	// eslint-plugin-svelte 2 does not see `generics`; TypeScript checks `V`.
 	/* eslint-disable no-undef */
 	import type { Snippet } from 'svelte';
-	import { getScrollyContext, type Direction } from './context';
+	import { getScrollyContext, setStepContext, type Direction } from './context';
 
 	interface Props {
 		view: V;
@@ -38,6 +38,15 @@
 	});
 
 	const active = $derived(scrolly.active === index);
+
+	setStepContext({
+		get active() {
+			return active;
+		},
+		get progress() {
+			return index < scrolly.active ? 1 : index > scrolly.active ? 0 : scrolly.progress;
+		}
+	});
 </script>
 
 <div class="step" class:scrub data-active={active ? '' : undefined} bind:this={element}>

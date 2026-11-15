@@ -23,7 +23,7 @@ import { pathToFileURL } from 'node:url';
 
 const run = promisify(execFile);
 
-const DEFAULT_BUCKET = 'bearylogical-data';
+const DEFAULT_BUCKET = 'bearylogical-stories-data'; // served at data.bearylogical.net
 const VERSIONED_NAME = /^[a-z0-9][a-z0-9-]*\.v\d+\.[a-z0-9]+$/;
 
 function usage(message) {
@@ -51,10 +51,10 @@ function parseArgs(argv) {
 
 const CF = process.env.CF_BIN || 'cf';
 
+/** Runs cf and returns { stdout, stderr }. */
 async function cf(args) {
 	try {
-		const { stdout } = await run(CF, args, { maxBuffer: 64 * 1024 * 1024 });
-		return stdout;
+		return await run(CF, args, { maxBuffer: 64 * 1024 * 1024 });
 	} catch (error) {
 		if (error.code === 'ENOENT') {
 			throw new Error(
@@ -65,18 +65,22 @@ async function cf(args) {
 	}
 }
 
-/** All objects under a prefix, as a Map of key → etag. */
+/**
+ * All objects under a prefix, as a Map of key → etag. `cf r2 objects list`
+ * prints the objects as a JSON array on stdout and the paging info as a
+ * `result_info: {...}` line on stderr.
+ */
 async function listRemote(bucket, prefix) {
 	const objects = new Map();
 	let cursor;
 	do {
 		const args = ['r2', 'objects', 'list', '--bucket-name', bucket, '--prefix', prefix, '--per-page', '1000'];
 		if (cursor) args.push('--cursor', cursor);
-		const page = JSON.parse(await cf(args));
-		const items = Array.isArray(page) ? page : (page.result ?? page.objects ?? []);
-		for (const o of items) objects.set(o.key, String(o.etag ?? '').replaceAll('"', ''));
-		cursor = Array.isArray(page) ? undefined : (page.result_info?.cursor ?? page.cursor);
-		if (Array.isArray(page) || !(page.result_info?.is_truncated ?? page.truncated)) cursor = undefined;
+		const { stdout, stderr } = await cf(args);
+		for (const o of JSON.parse(stdout)) objects.set(o.key, String(o.etag ?? '').replaceAll('"', ''));
+		const info = stderr.match(/^result_info: (\{.*\})$/m);
+		const page = info ? JSON.parse(info[1]) : {};
+		cursor = page.is_truncated ? page.cursor : undefined;
 	} while (cursor);
 	return objects;
 }

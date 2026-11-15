@@ -11,7 +11,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | Phase | Status | Where |
 | --- | --- | --- |
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
-| 2. Data | Done except deploy time (85 s, target 1 min; per-step timings needed) | bearylogical/stories#4 |
+| 2. Data | Done except deploy time (85 s, target 1 min; the fix is the Dockerfile build in [Later](#later)) | bearylogical/stories#4 |
 | 3. Scrollytelling | Done | bearylogical/stories#5 |
 | 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
 | 5. The rest | Not started (needs 3) | n/a |
@@ -120,7 +120,19 @@ Open a session in this repo and say:
   - MapTiler style, sprite and fonts: 0.46 MB
   - MapTiler tiles over Singapore: 0.40 to 0.61 MB (zoom 10 to 11)
   - The MapTiler and R2 sizes were measured with curl, because the browser hides cross-origin sizes. Not yet checked in DevTools with the cache disabled.
-- Deploy of `57b09b7` (the merge): 85 s. PR preview deploys took 30 to 80 s. Still to do: one deploy with Coolify's **Show Debug Logs** turned on, to see which step (`pnpm i`, the Railpack image build, or the rollout) takes the time.
+- Deploy of `57b09b7` (the merge): 85 s. PR preview deploys took 30 to 80 s. Where the time goes, from the debug log of the PR #6 preview deploy (75 s; a production deploy adds about 10 s of health-check and proxy waits):
+
+  | Step | Time |
+  | --- | --- |
+  | Helper container and `git clone --depth=1` | 7 s |
+  | Railpack plan, `nginx:alpine` pull check, buildx setup | 6 s |
+  | `pnpm i` (store cached) | 4 s |
+  | `pnpm build` (two Vite builds, then prerender) | 21.5 s |
+  | Copy `node_modules` and `/app` into Railpack's runtime image | 6 s |
+  | **Export that image and load it into Docker** (57 MB layer) | **22 s** |
+  | `FROM nginx:alpine`, copy `build/`, start container | 2 s |
+
+  The pull check takes 2 s, so pinning nginx wouldn't have helped. The biggest cost is Railpack's static mode: it builds a full image with `node_modules`, exports it, and loads it into Docker, only so the nginx stage can copy `build/` out of it. A Dockerfile build copies `build/` straight from its build stage and skips that, about 28 s. That should bring a production deploy to about 55 to 60 s. The time Railpack spends on the Node toolchain, and the Vite build itself, are the next biggest costs.
 
 ---
 
@@ -249,7 +261,7 @@ Ideas that are worth doing but aren't part of any phase yet.
   - first stage: `node:22-alpine`, `pnpm i --frozen-lockfile` with a BuildKit cache mount for the pnpm store, then `pnpm build`;
   - second stage: `FROM nginx:1.30-alpine` (pinned), with the custom nginx config copied in from the repo instead of kept in Coolify.
 
-  This pins the web server image (Coolify's Railpack static mode only offers `nginx:alpine`), caches dependencies between deploys, and puts the whole build in the repo. To do it:
+  This pins the web server image (Coolify's Railpack static mode only offers `nginx:alpine`), caches dependencies between deploys, and puts the whole build in the repo. It also skips Railpack's export of the intermediate image, about 28 s per deploy (see phase 2 results). It's the most likely way to meet phase 2's 1-minute deploy target. To do it:
   - update [ADR 0001](adr/0001-static-build-served-by-nginx-on-coolify.md) (or write a new ADR that replaces it);
   - switch the Coolify build pack to Dockerfile;
   - compare deploy times before and after.

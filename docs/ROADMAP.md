@@ -8,13 +8,13 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 
 ## Status
 
-| Phase                | Status                                                                                        | Where                                          |
-| -------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 1. Base              | Done (two Coolify variable tidy-ups left)                                                     | bearylogical/stories#1, bearylogical/stories#2 |
-| 2. Data              | PR open: Story Data published and Cloudflare set up; Coolify image pin and deploy timing left | bearylogical/stories#4                         |
-| 3. Scrollytelling    | Not started                                                                                   | n/a                                            |
-| 4. postal-sg rebuild | Not started (needs 2 and 3)                                                                   | n/a                                            |
-| 5. The rest          | Not started (needs 3)                                                                         | n/a                                            |
+| Phase | Status | Where |
+| --- | --- | --- |
+| 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
+| 2. Data | PR open: Story Data published and Cloudflare set up; Coolify image pin and deploy timing left | bearylogical/stories#4 |
+| 3. Scrollytelling | In progress (PR open; Coolify preview steps left) | bearylogical/stories#5 |
+| 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
+| 5. The rest | Not started (needs 3) | n/a |
 
 Update this table when a phase starts, opens a PR, or merges.
 
@@ -148,6 +148,28 @@ Open a session in this repo and say:
 9. **Story typography:** style Story text (headings, paragraphs, lists, links, the byline) in `src/lib/styles/story.css`, then turn Tailwind's Preflight back on in `src/app.css`. Check postal-sg still looks the same.
 
 **Done when:** a small sample Story in `src/stories/_example/` (always a Draft) shows Overlay and Sidecar, a Scrub Step and a MapStage, and type-checks cleanly.
+
+**Done in bearylogical/stories#5:**
+- `svelte.config.js` adds mdsvex for `.svx`. Runes work inside Stories (the sample uses `$derived`).
+- `src/lib/stories/`: the Story list (`allStories`, `stories`, `publishedStories`, `getStory`, `loadStoryComponent`) and `frontmatter.ts`, which throws one error listing every problem. It runs while prerendering, so a bad Story fails `pnpm build`. Slugs starting with `_` are samples and must stay Drafts.
+- `includeDrafts` is the compile-time constant `__INCLUDE_DRAFTS__`, set in `vite.config.ts`: on for `vite dev`, otherwise only with `PUBLIC_INCLUDE_DRAFTS=true`. `pnpm build:drafts` and `pnpm preview:drafts` set it.
+- `src/routes/[slug]/` renders the title, byline, summary, Story body and sources, with `DraftBanner` on Drafts. While no Story is published, the route isn't prerendered (SvelteKit 2.22 fails a build on a prerenderable route with no entries); `404.html` covers it.
+- `src/lib/scrolly/`: `Scrolly`, `Step` and the `StageProps` contract. Steps become active as they cross the middle of the viewport. Scrub Steps are twice as tall and their card stays in view. Inactive Sidecar Steps are dimmed only once JavaScript runs.
+- `src/lib/stages/MapStage.svelte`: a `MapView` has `camera`, `to` (the Scrub end camera), `layers` (visible Story layers; base-map layers are left alone) and `filters`. Every View is applied in full, so jumping straight to a Step gives the same map.
+- Typography: `story.css` puts headings, lists, links and spacing back inside `.story`, matching what postal-sg was designed with. `Section.svelte` and `Scroller.svelte` carry `.story` until phase 4. Preflight is on; `html` keeps `line-height: normal`.
+- `app.html`'s wrapper was `overflow-auto`, which made it a scroll container and broke `position: sticky`. It is `overflow-x-clip` now.
+
+**Differences after turning Preflight on** (computed styles compared before and after on `/postal-sg/` and `/`): Story text is in the same place at the same size. These changed:
+- the body's 8px margin is gone, so pages go edge to edge
+- the header is 80px tall (it was 84px, because its border was added to the 80px)
+- header buttons use Open Sans instead of the browser's button font
+- the Front Page placeholder lost its paragraph margins (it's rebuilt in phase 5)
+
+The postal-sg Steps couldn't be checked by eye on localhost, because R2's CORS rules block its data (phase 2). Their headings, paragraphs and lists get the same `.story` rules as the intro.
+
+**Left for phase 5:** the Story list imports every Story's `metadata` eagerly, and a Draft's code is still built as an unlinked chunk in production. Neither is routable or listed.
+
+**Coolify (not done yet; needs the owner's go-ahead):** add `PUBLIC_INCLUDE_DRAFTS=true` as a **preview-only** build variable, and turn on PR previews.
 
 ---
 

@@ -15,6 +15,9 @@
 	/* Highlight colour for figures in Story text (see Em). */
 	--color-highlight: #206095;
 	--color-highlight-strong: #003c57;
+	/* Links in Story text (the classic link colours the Stories were designed with). */
+	--color-link: #0000ee;
+	--color-link-visited: #551a8b;
 
 	--font-weight-normal: 400;
 	--font-weight-black: 900;

@@ -184,7 +184,8 @@
 
 <svelte:window bind:innerHeight={wh} />
 
-<svelte-scroller-outer bind:this={outer}>
+<!-- `story`: Story typography for postal-sg until phase 4 replaces this Scroller. -->
+<svelte-scroller-outer class="story" bind:this={outer}>
 	<svelte-scroller-background-container class="background-container" style="{style}{widthStyle}">
 		<svelte-scroller-background bind:this={background}>
 			{@render backgroundElements()}

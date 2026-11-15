@@ -5,7 +5,7 @@
 	let { theme = getContext('theme'), children } = $props();
 </script>
 
-<section style="color: {theme['text']}; background-color: {theme['background']}">
+<section class="story" style="color: {theme['text']}; background-color: {theme['background']}">
 	<div class="col-medium">
 		{@render children?.()}
 	</div>

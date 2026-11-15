@@ -8,13 +8,13 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 
 ## Status
 
-| Phase                | Status                                                                                       | Where                                          |
-| -------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 1. Base              | Done (two Coolify variable tidy-ups left)                                                    | bearylogical/stories#1, bearylogical/stories#2 |
-| 2. Data              | In progress (PR open; R2 upload, Cloudflare rules and Coolify image pin waiting on approval) | branch `claude/phase2-data-f27a09`             |
-| 3. Scrollytelling    | Not started                                                                                  | n/a                                            |
-| 4. postal-sg rebuild | Not started (needs 2 and 3)                                                                  | n/a                                            |
-| 5. The rest          | Not started (needs 3)                                                                        | n/a                                            |
+| Phase                | Status                                                                                      | Where                                          |
+| -------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1. Base              | Done (two Coolify variable tidy-ups left)                                                   | bearylogical/stories#1, bearylogical/stories#2 |
+| 2. Data              | In progress: PR open; R2 upload, Cloudflare rules and Coolify image pin waiting on approval | bearylogical/stories#4                         |
+| 3. Scrollytelling    | Not started                                                                                 | n/a                                            |
+| 4. postal-sg rebuild | Not started (needs 2 and 3)                                                                 | n/a                                            |
+| 5. The rest          | Not started (needs 3)                                                                       | n/a                                            |
 
 Update this table when a phase starts, opens a PR, or merges.
 

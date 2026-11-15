@@ -48,7 +48,7 @@ function calculateCenters(g) {
 }
 
 const inputPath = './data/postal-sg/singapore_districts.geojson';
-const outputPath = './src/assets/singapore_districts_centers.geojson';
+const outputPath = './src/stories/postal-sg/district-centers.geojson';
 
 fs.readFile(inputPath, 'utf8', (err, data) => {
     if (err) {

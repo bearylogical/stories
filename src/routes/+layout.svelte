@@ -12,7 +12,7 @@
 
 	// STYLE CONFIG
 	// Set theme globally (options are 'light' or 'dark')
-	let theme = 'light';
+	const theme = 'light';
 	setContext('theme', themes[theme]);
 </script>
 

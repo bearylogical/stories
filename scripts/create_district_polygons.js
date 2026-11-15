@@ -73,7 +73,7 @@ async function main(inputFile, outputFile) {
 }
 
 // Usage
-const inputFile = "/Users/syamil/Projects/postal-sg-v2/src/assets/singpostcode_processed.geojson";
+const inputFile = "./data/postal-sg/singpostcode_processed.geojson";
 const outputFile = "district_polygons.geojson";
 main(inputFile, outputFile);
 

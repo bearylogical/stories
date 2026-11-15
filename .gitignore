@@ -19,3 +19,6 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Source Data and built Story Data (docs/adr/0003). Too large for git.
+/data/

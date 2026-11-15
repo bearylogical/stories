@@ -1,0 +1,14 @@
+# Railpack honours this file (https://railpack.com/config/excluding-files).
+# Nothing below is needed by `pnpm build`.
+.git
+.claude
+.svelte-kit
+build
+node_modules
+data
+docs
+scripts
+**/.DS_Store
+.env
+.env.*
+!.env.example

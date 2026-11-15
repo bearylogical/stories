@@ -2,7 +2,7 @@
 
 ## What is this?
 
-This project is a collection of visual stories, each exploring a different dataset. The goal is to provide a simple way for users to appreciate the stories that data can tell. 
+This project is a collection of visual stories, each exploring a different dataset. The goal is to provide a simple way for users to appreciate the stories that data can tell.
 
 ## Development
 
@@ -11,6 +11,7 @@ This is a SvelteKit project. To get started, you'll need to have Node.js and pnp
 ### Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/bearylogical/stories.git
    cd stories
@@ -46,6 +47,7 @@ You can preview the production build with `pnpm run preview`.
 This project uses Prettier for code formatting and ESLint for linting.
 
 - **To check for formatting and linting errors:**
+
   ```bash
   pnpm run lint
   ```
@@ -55,6 +57,20 @@ This project uses Prettier for code formatting and ESLint for linting.
   pnpm run format
   ```
 
+## Story Data
+
+Large data files are not in git. Each Story's Source Data lives in `data/<slug>/` (git-ignored), and the published Story Data is on R2 at `https://data.bearylogical.net/<slug>/<name>.v<N>.<ext>` ([ADR 0003](docs/adr/0003-story-data-on-r2-per-slug-immutable.md)). Published files never change.
+
+1. Put the Source Data in `data/<slug>/`.
+2. Change the Story's build script (`scripts/data/<slug>/build.js`) and bump the version of each changed file (for postal-sg, in `src/lib/data/postal-sg.js`).
+3. Check, then publish. This needs the [`cf` CLI](https://developers.cloudflare.com/cf/get-started/) (Node 22.18+) and `cf auth login`:
+   ```bash
+   pnpm data:publish postal-sg --dry-run
+   pnpm data:publish postal-sg
+   ```
+4. To test files before publishing, serve `data/<slug>/dist/` at `<host>/<slug>/` with CORS and build with `VITE_DATA_HOST=<host>`.
+
+The older scripts in `scripts/` need their own install: `pnpm -C scripts install`.
 
 ## Deployment
 

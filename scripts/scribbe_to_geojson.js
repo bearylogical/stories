@@ -94,7 +94,7 @@ async function convertToGeoJSON(data) {
 
 async function main() {
     try {
-        const inputData = await fs.readFile('/Users/syamil/Projects/postal-sg-v2/src/assets/scribble.json', 'utf8');
+        const inputData = await fs.readFile('./data/postal-sg/scribble.json', 'utf8');
         const jsonData = JSON.parse(inputData);
         const geojsonData = await convertToGeoJSON(jsonData);
         await fs.writeFile('singapore_map_polygons.geojson', JSON.stringify(geojsonData, null, 2));

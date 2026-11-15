@@ -1,206 +1,198 @@
-// postal-filter-worker.js
-let postalCodesData = null;
+// postal-worker.js
+//
+// Loads postal-sg's packed postal points (src/lib/data/postal-points.js,
+// docs/adr/0005) and filters them by pattern across the whole island.
+// Address text is fetched per sector, only for small result sets (zoomed into
+// buildings, or a specific code in the Explorer).
+//
+// Messages in:  LOAD_DATA { url }, FILTER { pattern, maxResults }
+// Messages out: LOAD_COMPLETE, FILTER_COMPLETE, ERROR. Features are GeoJSON
+// Points with properties { POSTAL, ADDRESS? }.
 
-const precision = 8; // Default precision for rounding coordinates
-const simplifiedPrecision = 6; // Precision for simplified coordinates
+import { decodePostalPoints, formatPostal, sectorOf } from '$lib/data/postal-points.js';
+import { urls } from '$lib/data/postal-sg.js';
 
-// Function to round coordinates to a specified precision
-function roundCoord(coord, precision = 6) {
-	return Number(coord.toFixed(precision));
-}
+/** Fetch addresses only when a result has at most this many points... */
+const ADDRESS_MAX_POINTS = 2000;
+/** ...spread over at most this many sectors. */
+const ADDRESS_MAX_SECTORS = 4;
+const COORD_DECIMALS = 6; // ~0.1 m; Float32 holds about this much anyway
 
-// Load postal codes data once
+/** @typedef {{ count: number, codes: Uint32Array, lons: Float32Array, lats: Float32Array }} Points */
+/** @type {Points} set by LOAD_DATA before any FILTER */
+let points = /** @type {any} */ (null);
+/** @type {string[]} zero-padded postal code per point */
+let postals = [];
+/** @type {Map<string, number>} sector → index of its first point */
+const sectorStart = new Map();
+/** @type {Map<string, Promise<string[] | null>>} */
+const addressCache = new Map();
+
+/** @param {number} x */
+const round = (x) => Math.round(x * 10 ** COORD_DECIMALS) / 10 ** COORD_DECIMALS;
+
+/** @param {string} url */
 async function loadPostalCodes(url) {
 	try {
 		const response = await fetch(url);
-		const data = await response.json();
-		postalCodesData = data;
-		const simplified = aggregateByCoordinate(data.features, simplifiedPrecision);
-		const bounds = calculateBounds(data.features);
+		if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+		points = decodePostalPoints(await response.arrayBuffer());
+		postals = new Array(points.count);
+		for (let i = 0; i < points.count; i++) {
+			postals[i] = formatPostal(points.codes[i]);
+			const sector = postals[i].slice(0, 2);
+			if (!sectorStart.has(sector)) sectorStart.set(sector, i);
+		}
+		const all = Array.from({ length: points.count }, (_, i) => i);
 		return {
 			success: true,
-			count: data.features?.length || 0,
-			features: data,
-			simplified: simplified,
-			bounds: bounds
+			count: points.count,
+			features: toFeatureCollection(all, null),
+			simplified: [],
+			bounds: calculateBounds(all)
 		};
 	} catch (error) {
-		return { success: false, error: error.message };
+		return { success: false, error: error instanceof Error ? error.message : String(error) };
 	}
 }
 
-// Optimized filter function using regex
-function createFilterFunction(pattern) {
-	if (!pattern || pattern === '*') {
-		console.warn('Pattern is empty or "*", returning all postal codes');
-		return () => true;
+/** Addresses for one sector, in the same order as that sector's points. */
+/** @param {string} sector @returns {Promise<string[] | null>} */
+function loadSectorAddresses(sector) {
+	if (!addressCache.has(sector)) {
+		const promise = fetch(urls.addresses(sector))
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+			.catch((error) => {
+				console.warn(`postal-worker: no addresses for sector ${sector}:`, error.message);
+				addressCache.delete(sector); // allow a retry later
+				return null;
+			});
+		addressCache.set(sector, promise);
 	}
+	return /** @type {Promise<string[] | null>} */ (addressCache.get(sector));
+}
 
-	// Handle range patterns like 54[1-4]264
+/** @param {number[]} indices @returns {Promise<Map<number, string> | null>} */
+async function addressesFor(indices) {
+	if (indices.length === 0 || indices.length > ADDRESS_MAX_POINTS) return null;
+	const sectors = [...new Set(indices.map((i) => sectorOf(points.codes[i])))];
+	if (sectors.length > ADDRESS_MAX_SECTORS) return null;
+	const lists = await Promise.all(sectors.map(loadSectorAddresses));
+	const bySector = new Map(sectors.map((s, k) => [s, lists[k]]));
+	const result = new Map();
+	for (const i of indices) {
+		const sector = postals[i].slice(0, 2);
+		const list = bySector.get(sector);
+		const address = list?.[i - (sectorStart.get(sector) ?? 0)];
+		if (address !== undefined) result.set(i, address);
+	}
+	return result;
+}
+
+// Pattern matching: "*" wildcards, a single "[a-b]" digit range, or an exact code.
+/** @param {string} pattern @returns {(postal: string) => boolean} */
+function createFilterFunction(pattern) {
+	if (!pattern || pattern === '*') return () => true;
+
 	const rangeMatch = pattern.match(/^(.+)\[(\d)-(\d)\](.*)$/);
 	if (rangeMatch) {
 		const [, prefix, start, end, suffix] = rangeMatch;
-		const startNum = parseInt(start);
-		const endNum = parseInt(end);
-
-		// Create regex pattern for range
-		const rangePattern = `^${escapeRegex(prefix)}[${start}-${end}]${escapeRegex(suffix)}$`;
-		const regex = new RegExp(rangePattern);
-
+		const regex = new RegExp(`^${escapeRegex(prefix)}[${start}-${end}]${escapeRegex(suffix)}$`);
 		return (postal) => regex.test(postal);
 	}
 
-	// Handle wildcard patterns with *
 	if (pattern.includes('*')) {
-		// Convert wildcard pattern to regex
-		// Escape special regex characters except *
-		const escapedPattern = pattern
-			.replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special chars
-			.replace(/\*/g, '.*'); // Convert * to .*
-
-		const regex = new RegExp(`^${escapedPattern}$`);
+		const regex = new RegExp(
+			`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`
+		);
 		return (postal) => regex.test(postal);
 	}
 
-	// Exact match - also use regex for consistency
-	const exactRegex = new RegExp(`^${escapeRegex(pattern)}$`);
-	return (postal) => exactRegex.test(postal);
+	return (postal) => postal === pattern;
 }
 
-// Helper function to escape regex special characters
+/** @param {string} string */
 function escapeRegex(string) {
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-// Filter postal codes
-function filterPostalCodes(pattern, maxResults = 10000, precision = 6) {
-	if (!postalCodesData || !postalCodesData.features) {
-		return { features: [], count: 0 };
+
+/** @param {string} pattern @param {number} [maxResults] @returns {number[]} indices of matching points */
+function filterIndices(pattern, maxResults = -1) {
+	if (!points || maxResults === 0) return [];
+	const limit = maxResults < 0 ? points.count : maxResults;
+	const match = createFilterFunction(pattern);
+	const out = [];
+	for (let i = 0; i < points.count && out.length < limit; i++) {
+		if (match(postals[i])) out.push(i);
 	}
-
-	const filterFn = createFilterFunction(pattern);
-	const filteredFeatures = [];
-
-	if (maxResults === -1) {
-		maxResults = postalCodesData.features.length; // No limit
-	}
-	for (const feature of postalCodesData.features) {
-		// Stop if we reach maxResults but how dows it handle 0?
-		if (maxResults <= 0) {
-			return { features: [], count: 0 };
-		}
-		if (filteredFeatures.length >= maxResults) break;
-
-		const postal = feature.properties.POSTAL;
-		if (filterFn(postal)) {
-			filteredFeatures.push(feature);
-		}
-	}
-
-	// If too many features, reduce precision
-	if (filteredFeatures.length > 10000) {
-		for (const feature of filteredFeatures) {
-			if (feature.geometry && Array.isArray(feature.geometry.coordinates)) {
-				feature.geometry.coordinates = feature.geometry.coordinates.map((c) =>
-					roundCoord(c, precision)
-				);
-			}
-		}
-	}
-
-	return {
-		type: 'FeatureCollection',
-		features: filteredFeatures
-	};
+	return out;
 }
 
-function calculateBounds(features) {
-	if (!features || features.length === 0) return null;
+/** @param {number[]} indices @param {Map<number, string> | null} addresses */
+function toFeatureCollection(indices, addresses) {
+	const features = new Array(indices.length);
+	for (let k = 0; k < indices.length; k++) {
+		const i = indices[k];
+		/** @type {{ POSTAL: string, ADDRESS?: string }} */
+		const properties = { POSTAL: postals[i] };
+		const address = addresses?.get(i);
+		if (address !== undefined) properties.ADDRESS = address;
+		features[k] = {
+			type: 'Feature',
+			properties,
+			geometry: { type: 'Point', coordinates: [round(points.lons[i]), round(points.lats[i])] }
+		};
+	}
+	return { type: 'FeatureCollection', features };
+}
 
-	const bounds = features.reduce(
-		(bounds, feature) => {
-			const [lng, lat] = feature.geometry.coordinates;
-			return {
-				minLng: Math.min(bounds.minLng, lng),
-				minLat: Math.min(bounds.minLat, lat),
-				maxLng: Math.max(bounds.maxLng, lng),
-				maxLat: Math.max(bounds.maxLat, lat)
-			};
-		},
-		{
-			minLng: Infinity,
-			minLat: Infinity,
-			maxLng: -Infinity,
-			maxLat: -Infinity
-		}
-	);
-
+/** @param {number[]} indices */
+function calculateBounds(indices) {
+	if (indices.length === 0) return null;
+	let minLng = Infinity,
+		minLat = Infinity,
+		maxLng = -Infinity,
+		maxLat = -Infinity;
+	for (const i of indices) {
+		const lng = points.lons[i];
+		const lat = points.lats[i];
+		if (lng < minLng) minLng = lng;
+		if (lng > maxLng) maxLng = lng;
+		if (lat < minLat) minLat = lat;
+		if (lat > maxLat) maxLat = lat;
+	}
 	return [
-		[bounds.minLng, bounds.minLat],
-		[bounds.maxLng, bounds.maxLat]
+		[round(minLng), round(minLat)],
+		[round(maxLng), round(maxLat)]
 	];
 }
 
-// Aggregate features by coordinate, summing weights
-function aggregateByCoordinate(features, precision = 6) {
-	const coordMap = new Map();
-
-	for (const feature of features) {
-		if (
-			feature.geometry &&
-			Array.isArray(feature.geometry.coordinates) &&
-			feature.geometry.coordinates.length === 2
-		) {
-			// Round coordinates for grouping
-			const lng = roundCoord(feature.geometry.coordinates[0], precision);
-			const lat = roundCoord(feature.geometry.coordinates[1], precision);
-			const key = `${lng},${lat}`;
-
-			// Use weight property if present, else default to 1
-			const weight = typeof feature.properties.weight === 'number' ? feature.properties.weight : 1;
-
-			if (!coordMap.has(key)) {
-				coordMap.set(key, [[lng, lat], 0]);
-			}
-			coordMap.get(key)[1] += weight;
-		}
-	}
-
-	// Return as array of [ [lng, lat], weight ]
-	return Array.from(coordMap.values());
-}
-
-// Worker message handler
 self.onmessage = async function (e) {
 	const { type, data } = e.data;
 
 	switch (type) {
-		case 'LOAD_DATA':
-			const result = await loadPostalCodes(data.url);
+		case 'LOAD_DATA': {
+			const result = await loadPostalCodes(data?.url ?? urls.points);
 			self.postMessage({ type: 'LOAD_COMPLETE', data: result });
 			break;
+		}
 
-		case 'FILTER':
+		case 'FILTER': {
 			const { pattern, maxResults } = data;
-			// console.log(`Filtering postal codes with pattern: ${pattern}, maxResults: ${maxResults}`);
-			const filtered = filterPostalCodes(pattern, maxResults, precision);
-			const simplified = aggregateByCoordinate(
-				filtered.features,
-				filtered.features?.length > 1000 ? simplifiedPrecision : precision
-			);
-
-			const bounds = calculateBounds(filtered.features);
-
+			const indices = filterIndices(pattern, maxResults);
+			const addresses = await addressesFor(indices);
 			self.postMessage({
 				type: 'FILTER_COMPLETE',
 				data: {
-					features: filtered,
-					count: filtered.features.length,
-					bounds: bounds,
-					pattern: pattern,
-					simplified: simplified // Array of { coordinates, weight }
+					features: toFeatureCollection(indices, addresses),
+					count: indices.length,
+					bounds: calculateBounds(indices),
+					pattern,
+					simplified: []
 				}
 			});
 			break;
+		}
 
 		default:
 			self.postMessage({ type: 'ERROR', data: { message: 'Unknown message type' } });

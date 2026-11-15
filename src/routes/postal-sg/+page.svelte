@@ -26,6 +26,7 @@
 	import BuildingColorWorker from '$lib/workers/building-color-worker.ts?worker';
 	import Seo from '$lib/site/Seo.svelte';
 	import districtCentersUrl from '../../assets/singapore_districts_centers.geojson?url';
+	import { urls as storyData } from '$lib/data/postal-sg.js';
 
 	import Counter from '$lib/ui/Counter.svelte';
 	import type { LayerSpecification } from 'maplibre-gl';
@@ -34,8 +35,8 @@
 	let controlPosition: maplibregl.ControlPosition | undefined = $state('bottom-right');
 	// import '.css';
 
-	const planningareas = 'https://data.bearylogical.net/singapore_districts.geojson';
-	const postalcodes = 'https://data.bearylogical.net/singpostcode.geojson';
+	const planningareas = storyData.districts;
+	const postalcodes = storyData.points;
 
 	//states
 	let showBorder = $state(true);

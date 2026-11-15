@@ -3,13 +3,15 @@
 	import type { Snippet } from 'svelte';
 
 	interface Props {
-		/** Background colour as hex: `#rgb` or `#rrggbb`. */
+		/** Background colour as hex: `#rgb` or `#rrggbb`. Ignored when `tone` is set. */
 		color?: string;
+		/** A theme colour instead (`--color-highlight` or `--color-highlight-strong`), with white text. */
+		tone?: 'highlight' | 'highlight-strong';
 		nowrap?: boolean;
 		children?: Snippet;
 	}
 
-	let { color = '#d3d3d3', nowrap = true, children }: Props = $props();
+	let { color = '#d3d3d3', tone, nowrap = true, children }: Props = $props();
 
 	function textColor(hex: string): string {
 		let digits = hex.replace('#', '');
@@ -20,10 +22,11 @@
 		return brightness > 125 ? 'black' : 'white';
 	}
 
-	const text = $derived(textColor(color));
+	const background = $derived(tone ? `var(--color-${tone})` : color);
+	const text = $derived(tone ? 'white' : textColor(color));
 </script>
 
-<span class="em" class:nowrap style:background-color={color} style:color={text}>
+<span class="em" class:nowrap style:background-color={background} style:color={text}>
 	{@render children?.()}
 </span>
 

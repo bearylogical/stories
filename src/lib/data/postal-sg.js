@@ -13,7 +13,7 @@ export const DATA_HOST =
 export const SLUG = 'postal-sg';
 
 export const VERSIONS = {
-	points: 1,
+	points: 2,
 	addresses: 1,
 	districts: 1
 };

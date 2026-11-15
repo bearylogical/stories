@@ -21,7 +21,14 @@
 	{#if featured}
 		<article class="featured brutalist-card">
 			<a href="/{featured.slug}/" class="card-link">
-				<img src={featured.image} alt="" class="featured-image" />
+				<img
+					src={featured.image}
+					alt=""
+					width="1200"
+					height="630"
+					fetchpriority="high"
+					class="featured-image"
+				/>
 				<div class="featured-text">
 					<p class="meta">
 						{#if featured.status === 'draft'}<span class="draft">Draft</span>{/if}
@@ -44,7 +51,7 @@
 				<li>
 					<article>
 						<a href="/{story.slug}/" class="card-link">
-							<img src={story.image} alt="" loading="lazy" />
+							<img src={story.image} alt="" width="1200" height="630" loading="lazy" />
 							<div>
 								<p class="meta">
 									{#if story.status === 'draft'}<span class="draft">Draft</span>{/if}
@@ -121,7 +128,7 @@
 	.draft {
 		padding: 0.1rem 0.4rem;
 		background: var(--color-accent);
-		color: var(--color-paper);
+		color: var(--color-ink);
 		font-size: 0.75rem;
 		font-weight: var(--font-weight-black);
 		letter-spacing: var(--tracking-brutal);
@@ -158,7 +165,7 @@
 		line-height: 1.2;
 	}
 	.story-list .card-link:hover h3 {
-		color: var(--color-accent);
+		color: var(--color-accent-text);
 	}
 
 	.empty {

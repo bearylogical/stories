@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { setContext } from 'svelte';
+	import Footer from '$lib/layout/Footer.svelte';
 	import Header from '$lib/layout/Header.svelte';
 	import { themes } from '$lib/config';
 	import { absoluteUrl, site } from '$lib/site/config';
@@ -21,7 +22,7 @@
 	<link
 		rel="alternate"
 		type="application/rss+xml"
-		title={site.name}
+		title={site.fullName}
 		href={absoluteUrl('/rss.xml')}
 	/>
 </svelte:head>
@@ -31,3 +32,5 @@
 <main>
 	{@render children?.()}
 </main>
+
+<Footer />

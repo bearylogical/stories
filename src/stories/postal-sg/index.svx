@@ -3,7 +3,7 @@ title: Topography of Singapore Postal Codes
 published: 2024-09-01
 updated: 2026-11-15
 summary: Six digits take you from a corner of the island to one block of flats, and tell you whether it is a flat or a house.
-image: /web_thumb.png
+image: /covers/postal-sg.jpg
 status: published
 sources:
   - label: Postal code data from OneMap

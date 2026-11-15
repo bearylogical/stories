@@ -280,7 +280,7 @@ Step ${i + 1}. Write what the reader should notice here.
 title: ${yaml(title)}
 published: ${today}
 summary: ${yaml(summary)}
-image: /web_thumb.png
+image: /covers/default.jpg
 status: draft
 ---
 

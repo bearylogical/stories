@@ -283,7 +283,7 @@ The postal-sg Steps couldn't be checked by eye on localhost, because R2's CORS r
 
 **Notes from the PR:**
 
-- The Front Page loads the Story list in `+page.server.ts`, so it is read once while prerendering and no Story's code lands in the Front Page's JavaScript.
+- The Story list (`$lib/stories`) is server-side only now: the Front Page and `[slug]` read it in `+page.server.ts` while prerendering, and `[slug]/+page.ts` loads just its own Story through `$lib/stories/component.ts`. Before, the eager frontmatter glob put every Story's code on every Story page (1.05 MB preloaded on each); now a Story page preloads 74 KB and then loads only its own Story.
 - `Header.svelte` is now a slim bar (the Publication's name, "All Stories", RSS) that scrolls away with the page instead of a fixed 80px header, so a Scrolly's pinned Stage gets the whole screen.
 - In PR previews and `pnpm dev`, Drafts are on the Front Page (marked "Draft") and may be the featured Story; RSS always lists published Stories only.
 - So a Story needs nothing outside its folder: the wizard writes a `data.ts` in the Story's folder using `$lib/data/story-data.ts`, and `pnpm data:publish` publishes the versioned files in `data/<slug>/` as they are when there is no `scripts/data/<slug>/build.js`.

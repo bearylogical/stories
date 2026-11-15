@@ -1,8 +1,11 @@
 /**
  * The Story list: every Story in `src/stories/<slug>/index.svx`, newest first.
  * The Front Page, RSS and the `[slug]` route's `entries()` all read it (docs/adr/0004).
+ *
+ * Server-side only (server loads and endpoints, run while prerendering): reading each Story's
+ * frontmatter imports the Story itself, so importing this in the browser would ship every
+ * Story to every page. The browser loads one Story's component through `./component.ts`.
  */
-import type { Component } from 'svelte';
 import { parseFrontmatter } from './frontmatter';
 import type { Story } from './types';
 
@@ -21,10 +24,6 @@ const frontmatter = import.meta.glob<Record<string, unknown>>('/src/stories/*/in
 	import: 'metadata'
 });
 
-// The Story components themselves, loaded only when their page is opened.
-const components = import.meta.glob<Component>('/src/stories/*/index.svx', { import: 'default' });
-
-const pathOf = (slug: string) => `/src/stories/${slug}/index.svx`;
 const slugOf = (path: string) => path.split('/').at(-2)!;
 
 const byNewest = (a: Story, b: Story) =>
@@ -46,11 +45,4 @@ export const publishedStories: Story[] = allStories.filter((story) => story.stat
 /** The Story at this Slug, if this build serves it. */
 export function getStory(slug: string): Story | undefined {
 	return stories.find((story) => story.slug === slug);
-}
-
-/** Loads the Story's mdsvex component. */
-export async function loadStoryComponent(slug: string): Promise<Component> {
-	const load = components[pathOf(slug)];
-	if (!load) throw new Error(`No Story at ${pathOf(slug)}`);
-	return load();
 }

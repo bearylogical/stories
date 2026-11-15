@@ -11,7 +11,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | Phase | Status | Where |
 | --- | --- | --- |
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
-| 2. Data | Done except deploy time (85 s, target 1 min; the fix is the Dockerfile build in [Later](#later)) | bearylogical/stories#4 |
+| 2. Data | Done except deploy time: Dockerfile build PR open; then switch Coolify's build pack and time a deploy | bearylogical/stories#4 |
 | 3. Scrollytelling | Done | bearylogical/stories#5 |
 | 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
 | 5. The rest | Not started (needs 3) | n/a |
@@ -111,6 +111,15 @@ Open a session in this repo and say:
 - `cf` needs Node 22.18+. The repo's Node (nvm 22.16) is too old; Homebrew's Node 24 works.
 - Deploy baseline before this phase: 96 s for `3bf884c` (Railpack cached layers), about 3 to 4 minutes for earlier cold deploys.
 - **The static image can't be pinned in Coolify.** Its "Web server" setting is a fixed list whose only selectable value is `nginx:alpine`, and the API checks against the same list. The pull it does on each deploy is mostly a version check that takes seconds, so pinning would mainly make builds reproducible rather than faster. A Dockerfile build would allow it; see [Later](#later).
+
+**Dockerfile build (replaces Railpack):**
+- `Dockerfile` has two stages:
+  - `node:22.23-alpine` installs from the lockfile, with the pnpm store in a BuildKit cache mount, then runs `pnpm build`;
+  - `nginx:1.30-alpine` (pinned) gets `build/` and `nginx.conf`.
+- `nginx.conf` is now in the repo instead of in Coolify. It keeps the same `try_files`, adds `Cache-Control: immutable` for `/_app/immutable/`, and turns on gzip.
+- Build variables `PUBLIC_MAPTILER_KEY` and `PUBLIC_INCLUDE_DRAFTS` (default `false`) come in as build args. Coolify passes build variables to Dockerfile builds that way.
+- Local timings (OrbStack, Apple silicon): a cold build takes 34.5 s, including pulling both images. A rebuild after a source-only change takes 12.8 s.
+- Coolify switch, done by hand once the PR is merged: **Build Pack** → Dockerfile, then deploy. After that the custom nginx config in Coolify is no longer used and can be cleared.
 
 **Results after merge (2026-11-15):**
 - First load of postal-sg before the first Step, compressed: about 2.2 to 2.4 MB (was 72 MB).
@@ -257,11 +266,6 @@ The postal-sg Steps couldn't be checked by eye on localhost, because R2's CORS r
 
 Ideas that are worth doing but aren't part of any phase yet.
 
-- **Build with our own Dockerfile instead of Railpack.** A two-stage `Dockerfile`:
-  - first stage: `node:22-alpine`, `pnpm i --frozen-lockfile` with a BuildKit cache mount for the pnpm store, then `pnpm build`;
-  - second stage: `FROM nginx:1.30-alpine` (pinned), with the custom nginx config copied in from the repo instead of kept in Coolify.
+- ~~Build with our own Dockerfile instead of Railpack.~~ Done: moved into phase 2, see "Dockerfile build" there.
 
-  This pins the web server image (Coolify's Railpack static mode only offers `nginx:alpine`), caches dependencies between deploys, and puts the whole build in the repo. It also skips Railpack's export of the intermediate image, about 28 s per deploy (see phase 2 results). It's the most likely way to meet phase 2's 1-minute deploy target. To do it:
-  - update [ADR 0001](adr/0001-static-build-served-by-nginx-on-coolify.md) (or write a new ADR that replaces it);
-  - switch the Coolify build pack to Dockerfile;
-  - compare deploy times before and after.
+  Nothing else is waiting here yet.

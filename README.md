@@ -76,8 +76,8 @@ The older scripts in `scripts/` need their own install: `pnpm -C scripts install
 
 The Publication is a fully static site (`@sveltejs/adapter-static`, every page prerendered; see [ADR 0001](docs/adr/0001-static-build-served-by-nginx-on-coolify.md)).
 
-- **Coolify** builds `main` and serves `build/` with `nginx:alpine`. Pushing to `main` deploys.
-- **Build variables:** `PUBLIC_MAPTILER_KEY` only. Nothing reads runtime variables.
+- **Coolify** builds `main` from the `Dockerfile` (Node build stage, then `nginx:1.30-alpine` with `nginx.conf`). Pushing to `main` deploys. To check the image locally: `docker build --build-arg PUBLIC_MAPTILER_KEY=... -t stories . && docker run -p 4173:80 stories`.
+- **Build variables:** `PUBLIC_MAPTILER_KEY`, and `PUBLIC_INCLUDE_DRAFTS` (true for PR previews only). Each needs an `ARG` in the `Dockerfile`. Nothing reads runtime variables.
 - **URLs:** each page is written to `<slug>/index.html`. `/<slug>/` is the canonical URL, and `/<slug>` and `/<slug>/index.html` also work. Slugs never change once published.
 
 ## Project language

@@ -10,7 +10,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 
 | Phase | Status | Where |
 | --- | --- | --- |
-| 1. Base | Code done; Coolify switch pending | bearylogical/stories#1 |
+| 1. Base | Done; static build live. Two Coolify variable tidy-ups and deleting `prod` left | bearylogical/stories#1, PR for the Preflight fix |
 | 2. Data | Not started | n/a |
 | 3. Scrollytelling | Not started | n/a |
 | 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
@@ -39,13 +39,13 @@ Open a session in this repo and say:
 - `vite.config.ts` sets an inline empty PostCSS config. Without it, Vite picks up a stray `postcss.config.*` from a parent directory, which happens in worktrees.
 - Fixed: district centres were fetched from `/src/assets/…` (404 in production). They're now an `?url` import.
 
-**Still to do (in Coolify, `stories-frontend`, uuid `rokg0ww004g0gck4o0wsosgw`):**
-1. Merge PR #1.
-2. Change the git branch from `prod` to `main`.
-3. Switch to static mode: Nixpacks static, publish directory `/build`, build command `pnpm build`, `nginx:alpine`. The custom nginx config already has `try_files $uri $uri.html $uri/index.html …`; keep it.
-4. Remove `ONE_MAP_API_KEY` (normal and preview). Keep `PUBLIC_MAPTILER_KEY` as a build variable only.
-5. Redeploy. Check that `/`, `/postal-sg`, `/postal-sg/` and `/postal-sg/index.html` return 200 and the map renders.
-6. Delete the `prod` branch on GitHub.
+**Coolify switch (done 2026-11-15):** `stories-frontend` (uuid `rokg0ww004g0gck4o0wsosgw`) builds `main` with Railpack in static mode (Nixpacks is deprecated): build command `pnpm build`, publish directory `/build`, `nginx:alpine` on port 80, no start command, and the custom nginx config with `try_files $uri $uri.html $uri/index.html …`. `/`, `/postal-sg`, `/postal-sg/` and `/postal-sg/index.html` all return 200.
+
+**Still to do:**
+1. In Coolify, delete the preview `ONE_MAP_API_KEY`, and untick **Runtime** on both `PUBLIC_MAPTILER_KEY` entries (build only).
+2. Delete the `prod` branch on GitHub once the Preflight fix below is live.
+
+**Tailwind Preflight is off:** `src/app.css` loads Tailwind 4's theme and utilities, but not Preflight (its CSS reset). On `prod`, Tailwind 3's reset never ran, so Stories were styled by browser defaults for headings, lists, links and spacing. Turning the reset on in PR #1 removed the postal-sg headline styling, list numbers and link styles. Phase 3 adds deliberate Story typography; it can turn Preflight back on then.
 
 **Known debt (left on purpose, fixed in phases 3–4):** `pnpm check` reports about 100 type errors in `Scroller.svelte`, `postal-sg/+page.svelte`, the workers, `loader.js` and `utils.js`. All of them were already on `prod`.
 
@@ -109,6 +109,7 @@ Open a session in this repo and say:
    - All Step text is prerendered and readable without JavaScript.
    - With `prefers-reduced-motion`, the Stage jumps straight to each View and Scrub is turned off.
 8. **Clean up:** delete the ONS `Scroller.svelte` once nothing imports it (in phase 4 at the latest).
+9. **Story typography:** style Story text (headings, paragraphs, lists, links, the byline) in `src/lib/styles/story.css`, then turn Tailwind's Preflight back on in `src/app.css`. Check postal-sg still looks the same.
 
 **Done when:** a small sample Story in `src/stories/_example/` (always a Draft) shows Overlay and Sidecar, a Scrub Step and a MapStage, and type-checks cleanly.
 

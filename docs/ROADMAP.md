@@ -14,7 +14,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | 2. Data | Done except deploy time: Dockerfile build merged (bearylogical/stories#8); switch Coolify's build pack and time a deploy | bearylogical/stories#4, bearylogical/stories#8 |
 | 3. Scrollytelling | Done | bearylogical/stories#5 |
 | 4. postal-sg rebuild | Done | bearylogical/stories#9 |
-| 5. The rest | In progress (PR open) | bearylogical/stories#10 |
+| 5. The rest | Done | bearylogical/stories#10 |
 
 Update this table when a phase starts, opens a PR, or merges.
 

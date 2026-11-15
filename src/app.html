@@ -36,6 +36,7 @@
 	}
 </script>
 <body data-sveltekit-preload-data="hover">
-	<div class="h-full w-full overflow-auto">%sveltekit.body%</div>
+	<!-- overflow-x-clip, not overflow-auto: a scroll container here would break position: sticky. -->
+	<div class="h-full w-full overflow-x-clip">%sveltekit.body%</div>
 </body>
 </html>

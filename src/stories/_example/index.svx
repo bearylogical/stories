@@ -1,0 +1,128 @@
+---
+title: How a Story is put together
+published: 2026-11-15
+summary: A sample Story that shows every part of the authoring system — Overlay and Sidecar Scrollys, a Scrub Step and a MapStage.
+image: /web_thumb.png
+status: draft
+sources:
+  - label: MapLibre GL JS
+    href: https://maplibre.org/
+  - label: GSAP ScrollTrigger
+    href: https://gsap.com/docs/v3/Plugins/ScrollTrigger/
+---
+
+<script lang="ts">
+	import { Scrolly, Step } from '$lib/scrolly';
+	import { MapStage } from '$lib/stages';
+	import { GeoJSONSource, CircleLayer, SymbolLayer } from 'svelte-maplibre-gl';
+	import { streetsStyle } from '$lib/styles';
+	import BarStage from './BarStage.svelte';
+	import { places } from './places';
+
+	// Runes work inside Stories.
+	const parks = $derived(places.features.filter((f) => f.properties.kind === 'park').length);
+
+	const visits = [
+		{ label: 'Parks', value: 42 },
+		{ label: 'Malls', value: 65 },
+		{ label: 'Museums', value: 18 },
+		{ label: 'Beaches', value: 27 }
+	];
+</script>
+
+This Story is a **Draft** and always will be: it is the reference for writing Stories. It lives in `src/stories/_example/index.svx`. The text is Markdown; the Scrollys are Svelte components.
+
+## An Overlay Scrolly
+
+In an Overlay, the Steps scroll as cards over a full-screen Stage. Each Step declares a *View*; the Stage decides how to get there.
+
+<Scrolly layout="overlay" label="Map of Singapore">
+{#snippet stage(view, progress)}
+<MapStage {view} {progress} style={streetsStyle}>
+<GeoJSONSource id="places" data={places}>
+<CircleLayer
+	id="places-circles"
+	paint={{
+		'circle-radius': 8,
+		'circle-color': ['match', ['get', 'kind'], 'park', '#206095', '#ff6b35'],
+		'circle-stroke-width': 2,
+		'circle-stroke-color': '#ffffff'
+	}}
+/>
+<SymbolLayer
+	id="places-labels"
+	layout={{
+		'text-field': ['get', 'name'],
+		'text-font': ['Open Sans Bold'],
+		'text-size': 13,
+		'text-offset': [0, 1.2],
+		'text-anchor': 'top'
+	}}
+	paint={{ 'text-halo-color': '#ffffff', 'text-halo-width': 2 }}
+/>
+</GeoJSONSource>
+</MapStage>
+{/snippet}
+
+<Step view={{ camera: { center: [103.82, 1.35], zoom: 10.5 }, layers: [] }}>
+
+Singapore, with none of the Story's layers on.
+
+</Step>
+
+<Step view={{ camera: { center: [103.84, 1.31], zoom: 11.5 }, layers: ['places-circles', 'places-labels'] }}>
+
+The **places** layer turns on, and the camera moves in.
+
+</Step>
+
+<Step view={{ camera: { center: [103.84, 1.31], zoom: 11.5 }, layers: ['places-circles', 'places-labels'], filters: { 'places-circles': ['==', ['get', 'kind'], 'park'], 'places-labels': ['==', ['get', 'kind'], 'park'] } }}>
+
+A filter keeps only the {parks} parks.
+
+</Step>
+
+<Step scrub view={{ camera: { center: [103.8545, 1.2834], zoom: 13, pitch: 0, bearing: 0 }, to: { center: [103.8605, 1.2816], zoom: 16, pitch: 60, bearing: -40 }, layers: ['places-labels'] }}>
+
+**Scrub:** this Step follows your scroll. Keep scrolling and the camera tilts and turns over Marina Bay.
+
+</Step>
+</Scrolly>
+
+## A Sidecar Scrolly
+
+In a Sidecar, the Steps sit beside the Stage. On a narrow screen it falls back to an Overlay. Any component that takes `view` and `progress` can be a Stage — this one is a bar chart from the Story's own folder.
+
+<Scrolly layout="sidecar" label="Bar chart of visits">
+{#snippet stage(view, progress)}
+<BarStage {view} {progress} data={visits} />
+{/snippet}
+
+<Step view={{ grow: true }} scrub>
+
+**Scrub** again: the bars grow as you scroll.
+
+</Step>
+
+<Step view={{ highlight: 'Malls' }}>
+
+Malls get the most visits.
+
+</Step>
+
+<Step view={{ highlight: 'Museums' }}>
+
+Museums get the fewest.
+
+</Step>
+</Scrolly>
+
+## After the Scrollys
+
+Ordinary text continues here. Lists and links get the Story typography:
+
+1. Write the text in Markdown.
+2. Declare a View on each Step.
+3. Let the Stage work out how to get there.
+
+See the [roadmap](https://github.com/bearylogical/stories/blob/main/docs/ROADMAP.md) for what comes next.

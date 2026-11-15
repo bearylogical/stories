@@ -1,4 +1,4 @@
-# Railpack honours this file (https://railpack.com/config/excluding-files).
+# Build context filter for the Dockerfile build (and Railpack, which honours it too).
 # Nothing below is needed by `pnpm build`.
 .git
 .claude

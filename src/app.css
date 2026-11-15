@@ -1,5 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
-@import 'tailwindcss';
+/*
+ * Tailwind 4 without Preflight (its CSS reset). The live site was built without the reset, and
+ * Stories rely on browser defaults for headings, lists, links and spacing. Phase 3 replaces those
+ * defaults with deliberate Story typography; until then, leave the reset out.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 @import './lib/styles/theme.css';
 @import './lib/styles/story.css';
 @import './lib/styles/brutalist.css';

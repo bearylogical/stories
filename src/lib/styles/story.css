@@ -1,8 +1,111 @@
 /*
- * Layout and typography shared by every Story.
+ * Typography and layout shared by every Story.
+ *
+ * Tailwind's Preflight resets headings, lists, links and spacing to nothing. Inside `.story`
+ * these rules put them back on purpose. The sizes and spacing match the browser defaults the
+ * Stories were first designed with (postal-sg), so turning Preflight on changed nothing there.
+ * They sit in the `base` layer, so any component class or utility still wins.
+ */
+@layer base {
+	:where(.story) h1 {
+		margin-block: 0.67em;
+		font-size: 2em;
+		font-weight: bold;
+	}
+	:where(.story) h2 {
+		margin-block: 0.83em;
+		font-size: 1.5em;
+		font-weight: bold;
+	}
+	:where(.story) h3 {
+		margin-block: 1em;
+		font-size: 1.17em;
+		font-weight: bold;
+	}
+	:where(.story) h4 {
+		margin-block: 1.33em;
+		font-weight: bold;
+	}
+
+	:where(.story) p,
+	:where(.story) ol,
+	:where(.story) ul,
+	:where(.story) pre {
+		margin-block: 1em;
+	}
+	:where(.story) ol,
+	:where(.story) ul {
+		padding-left: 40px;
+	}
+	:where(.story) ol {
+		list-style: decimal;
+	}
+	:where(.story) ul {
+		list-style: disc;
+	}
+	:where(.story) li > :is(ol, ul) {
+		margin-block: 0;
+	}
+
+	:where(.story) a {
+		color: var(--color-link);
+		text-decoration: underline;
+	}
+	:where(.story) a:visited {
+		color: var(--color-link-visited);
+	}
+
+	:where(.story) blockquote {
+		margin-block: 1em;
+		padding-left: 1em;
+		border-left: var(--border-brutal-thick) solid var(--color-rule);
+		color: var(--color-muted);
+	}
+	:where(.story) code {
+		font-size: 0.875em;
+	}
+	:where(.story) hr {
+		margin-block: 2em;
+		border-color: var(--color-rule);
+	}
+}
+
+/*
+ * Layout shared by every Story.
  * Columns: col-narrow < col-medium < col-wide < col-full.
  */
 @layer components {
+	/* A Story page from src/stories/: text in one column, Scrollys full width. */
+	.story-header,
+	.story-sources {
+		width: min(680px, 100% - 2rem);
+		margin-inline: auto;
+	}
+	.story-header {
+		padding-top: 1rem;
+	}
+	.story-byline {
+		color: var(--color-muted);
+		font-size: 14px;
+	}
+	.story-summary {
+		font-size: 1.125em;
+	}
+	.story-body {
+		display: grid;
+		grid-template-columns: 1fr min(680px, 100% - 2rem) 1fr;
+	}
+	.story-body > * {
+		grid-column: 2;
+	}
+	.story-body > .scrolly {
+		grid-column: 1 / -1;
+	}
+	.story-sources {
+		margin-block: 3rem;
+		font-size: 14px;
+	}
+
 	.col-full {
 		width: 100%;
 	}

@@ -1,0 +1,36 @@
+/*
+ * Publication design tokens (Tailwind 4).
+ * Values in @theme become utilities, e.g. bg-accent, text-ink, font-sans, shadow-brutal.
+ * Every Story and shared component uses these tokens, never hard-coded values.
+ */
+@theme {
+	--font-sans: 'Open Sans', 'Helvetica Neue', Arial, sans-serif;
+
+	--color-ink: #000000;
+	--color-paper: #ffffff;
+	--color-canvas: #f8f8f8;
+	--color-rule: #e5e5e5;
+	--color-muted: #777777;
+	--color-accent: #ff6b35;
+	/* Highlight colour for figures in Story text (see Em). */
+	--color-highlight: #206095;
+	--color-highlight-strong: #003c57;
+
+	--font-weight-normal: 400;
+	--font-weight-black: 900;
+
+	--tracking-brutal: 0.05em;
+	--tracking-brutal-tight: -0.02em;
+
+	--shadow-brutal: 4px 4px 0 var(--color-ink);
+	--shadow-brutal-lg: 8px 8px 0 var(--color-ink);
+}
+
+/* Tokens that don't map to a Tailwind utility. */
+:root {
+	--border-brutal: 2px;
+	--border-brutal-thick: 4px;
+	--shadow-offset: 4px;
+	--shadow-offset-lg: 8px;
+	--header-height: 80px;
+}

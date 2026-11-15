@@ -10,8 +10,12 @@
 	--color-paper: #ffffff;
 	--color-canvas: #f8f8f8;
 	--color-rule: #e5e5e5;
-	--color-muted: #777777;
+	/* #666 keeps small grey text above 4.5:1 on both paper and canvas. */
+	--color-muted: #666666;
+	/* Fills only: text on it is ink (7.4:1); paper text on it fails contrast. */
 	--color-accent: #ff6b35;
+	/* The accent for text and hover states on paper or canvas (5.2:1). */
+	--color-accent-text: #c2410c;
 	/* Highlight colour for figures in Story text (see Em). */
 	--color-highlight: #206095;
 	--color-highlight-strong: #003c57;
@@ -20,7 +24,8 @@
 	--color-link-visited: #551a8b;
 
 	--font-weight-normal: 400;
-	--font-weight-black: 900;
+	/* Open Sans tops out at 800; asking for 900 got a 700 stand-in. */
+	--font-weight-black: 800;
 
 	--tracking-brutal: 0.05em;
 	--tracking-brutal-tight: -0.02em;

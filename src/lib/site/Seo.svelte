@@ -17,10 +17,15 @@
 		published?: string;
 	}
 
-	let { title, description, image = site.defaultImage, type = 'website', published }: Props =
-		$props();
+	let {
+		title,
+		description,
+		image = site.defaultImage,
+		type = 'website',
+		published
+	}: Props = $props();
 
-	const fullTitle = $derived(title ? `${title} | ${site.shortName}` : site.name);
+	const fullTitle = $derived(title ? `${title} · ${site.name}` : site.fullName);
 	const canonical = $derived(absoluteUrl(page.url.pathname));
 	const imageUrl = $derived(absoluteUrl(image));
 </script>
@@ -29,7 +34,7 @@
 	<title>{fullTitle}</title>
 	<meta name="description" content={description} />
 	<link rel="canonical" href={canonical} />
-	<meta property="og:site_name" content={site.name} />
+	<meta property="og:site_name" content={site.fullName} />
 	<meta property="og:locale" content={site.locale} />
 	<meta property="og:title" content={fullTitle} />
 	<meta property="og:description" content={description} />

@@ -2,7 +2,7 @@
 title: How a Story is put together
 published: 2026-11-15
 summary: A sample Story that shows every part of the authoring system — Overlay and Sidecar Scrollys, a Scrub Step and a MapStage.
-image: /web_thumb.png
+image: /covers/_example.jpg
 status: draft
 sources:
   - label: MapLibre GL JS

@@ -3,7 +3,7 @@ title: Topography of Singapore Postal Codes
 published: 2024-09-01
 updated: 2025-07-06
 summary: A short explainer on how Singapore's six-digit postal codes map the island.
-image: /web_thumb.png
+image: /covers/postal-sg.jpg
 status: published
 sources:
   - label: Postal code data from OneMap

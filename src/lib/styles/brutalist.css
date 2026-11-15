@@ -5,7 +5,7 @@
 		padding: 0.75rem 1.5rem;
 		border: var(--border-brutal-thick) solid var(--color-ink);
 		background: var(--color-accent);
-		color: var(--color-paper);
+		color: var(--color-ink);
 		font-size: 0.875rem;
 		font-weight: var(--font-weight-black);
 		letter-spacing: var(--tracking-brutal);

@@ -1,4 +1,4 @@
-# Bearylogical Stories
+# stories (by bearylogical)
 
 A Publication of visual data stories at [stories.bearylogical.net](https://stories.bearylogical.net). Each Story walks a reader through one dataset as they scroll.
 

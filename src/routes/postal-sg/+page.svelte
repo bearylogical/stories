@@ -24,9 +24,8 @@
 	import maplibregl from 'maplibre-gl';
 	import PostalWorker from '$lib/workers/postal-worker.js?worker';
 	import BuildingColorWorker from '$lib/workers/building-color-worker.ts?worker';
-
-	// import { DeckGLOverlay } from '@svelte-maplibre-gl/deckgl';
-	// import { HeatmapLayer } from '@deck.gl/aggregation-layers';
+	import Seo from '$lib/site/Seo.svelte';
+	import districtCentersUrl from '../../assets/singapore_districts_centers.geojson?url';
 
 	import Counter from '$lib/ui/Counter.svelte';
 	import type { LayerSpecification } from 'maplibre-gl';
@@ -251,7 +250,7 @@
 	const BUILDING_ZOOM_START = 16;
 	const NUM_BUILDINGS_TO_RENDER = 500; // Number of buildings to render at high zoom levels
 
-	const planningAreasCentersUrl = '/src/assets/singapore_districts_centers.geojson';
+	const planningAreasCentersUrl = districtCentersUrl;
 	let layers: LayerSpecification[] = $state.raw([]);
 	$effect(() => {});
 	onMount(() => {
@@ -539,15 +538,13 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Topography of Singapore Postal Codes</title>
-	<meta name="description" content="This is where the description goes for SEO" />
-	<meta property="og:title" content="Topography of Singapore Postal Codes | Bearylogical" />
-	<meta property="og:description" content="A short explainer on Singapore's postal codes" />
-	<meta property="og:image" content="/web_thumb.png" />
-	<meta property="og:url" content="https://stories.bearylogical.net/postal-sg/index.html" />
-	<meta property="og:type" content="website" />
-</svelte:head>
+<Seo
+	title="Topography of Singapore Postal Codes"
+	description="A short explainer on how Singapore's six-digit postal codes map the island."
+	image="/web_thumb.png"
+	type="article"
+	published="2024-09-01"
+/>
 
 <Section>
 	<h2>Topography of Singapore Postal Codes</h2>
@@ -992,35 +989,6 @@
 		padding: 0;
 		position: relative;
 		z-index: 1; /* Below header but above background */
-	}
-
-	/* CLASSES */
-
-	.col-full {
-		width: 100%;
-	}
-
-	.col-medium {
-		width: 100%;
-		max-width: 680px;
-		margin: 0 24px;
-	}
-
-	.height-full {
-		min-height: 100vh;
-	}
-
-	.text-big {
-		font-size: 30px;
-		margin: 20px 0;
-	}
-
-	.text-small {
-		font-size: 14px;
-	}
-
-	.text-muted {
-		color: #777;
 	}
 
 	/* SCROLL-SPECIFIC ELEMENTS */

@@ -1,0 +1,41 @@
+/*
+ * Layout and typography shared by every Story.
+ * Columns: col-narrow < col-medium < col-wide < col-full.
+ */
+@layer components {
+	.col-full {
+		width: 100%;
+	}
+	.col-wide {
+		width: 100%;
+		max-width: 1100px;
+		margin-inline: auto;
+	}
+	.col-medium {
+		width: 100%;
+		max-width: 680px;
+		margin: 0 24px;
+	}
+	.col-narrow {
+		width: 100%;
+		max-width: 540px;
+		margin-inline: auto;
+	}
+	.height-full {
+		min-height: 100vh;
+	}
+
+	.text-big {
+		font-size: 30px;
+		margin: 20px 0;
+	}
+	.text-small {
+		font-size: 14px;
+	}
+	.text-muted {
+		color: var(--color-muted);
+	}
+	.mb {
+		margin-bottom: 1rem;
+	}
+}

@@ -1,146 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-html {
-	font-family: 'Open Sans', 'Helvetica Neue', 'Arial', sans-serif;
-	font-weight: 400;
-}
+@import 'tailwindcss';
+@import './lib/styles/theme.css';
+@import './lib/styles/story.css';
+@import './lib/styles/brutalist.css';
 
-@layer theme {
-	body {
-		background-color: var(--brutalist-gray);
+@layer base {
+	html {
+		font-family: var(--font-sans);
+		font-weight: var(--font-weight-normal);
 	}
-
-	/* Ensure main content starts below header */
+	body {
+		background-color: var(--color-canvas);
+	}
+	/* Main content sits below the fixed header. */
 	main {
 		position: relative;
 		z-index: 1;
 	}
+}
 
-	/* Special handling for fullscreen sections that might overlap header */
+/* Full-screen sections that extend up under the fixed header. */
+@layer components {
 	.fullscreen-section {
-		margin-top: -80px;
-		padding-top: 80px;
-	}
-	/* Brutalist Design System - Global Variables and Utilities */
-
-	:root {
-		/* Colors */
-		--brutalist-black: #000000;
-		--brutalist-white: #ffffff;
-		--brutalist-accent: #ff6b35;
-		--brutalist-gray: #f8f8f8;
-		--brutalist-border-gray: #e5e5e5;
-
-		/* Spacing */
-		--brutalist-border-width: 2px;
-		--brutalist-border-width-thick: 4px;
-		--brutalist-shadow-offset: 4px;
-		--brutalist-shadow-offset-large: 8px;
-
-		/* Typography */
-	}
-
-	/* Brutalist Utility Classes */
-	.brutalist-button {
-		background: var(--brutalist-accent);
-		color: var(--brutalist-white);
-		border: var(--brutalist-border-width-thick) solid var(--brutalist-black);
-		padding: 0.75rem 1.5rem;
-		font-weight: var(--brutalist-font-weight-black);
-		font-size: 0.875rem;
-		text-transform: uppercase;
-		letter-spacing: var(--brutalist-letter-spacing);
-		cursor: pointer;
-		transition: all 0.2s ease;
-		box-shadow: var(--brutalist-shadow-offset) var(--brutalist-shadow-offset) 0px
-			var(--brutalist-black);
-		text-decoration: none;
-		display: inline-block;
-		text-align: center;
-	}
-
-	.brutalist-button:hover {
-		transform: translate(-2px, -2px);
-		box-shadow: 6px 6px 0px var(--brutalist-black);
-	}
-
-	.brutalist-button:active {
-		transform: translate(0px, 0px);
-		box-shadow: 2px 2px 0px var(--brutalist-black);
-	}
-
-	.brutalist-button--secondary {
-		background: var(--brutalist-white);
-		color: var(--brutalist-black);
-		border: var(--brutalist-border-width) solid var(--brutalist-black);
-	}
-
-	.brutalist-button--secondary:hover {
-		background: var(--brutalist-black);
-		color: var(--brutalist-white);
-		box-shadow: var(--brutalist-shadow-offset) var(--brutalist-shadow-offset) 0px
-			var(--brutalist-accent);
-	}
-
-	.brutalist-card {
-		background: var(--brutalist-white);
-		border: var(--brutalist-border-width-thick) solid var(--brutalist-black);
-		box-shadow: var(--brutalist-shadow-offset-large) var(--brutalist-shadow-offset-large) 0px
-			var(--brutalist-black);
-		padding: 2rem;
-		transition: all 0.2s ease;
-	}
-
-	.brutalist-card:hover {
-		transform: translate(-4px, -4px);
-		box-shadow: 12px 12px 0px var(--brutalist-accent);
-	}
-
-	.brutalist-input {
-		border: var(--brutalist-border-width) solid var(--brutalist-black);
-		padding: 0.75rem 1rem;
-		font-size: 1rem;
-		font-weight: var(--brutalist-font-weight-normal);
-		background: var(--brutalist-white);
-		transition: all 0.2s ease;
-	}
-
-	.brutalist-input:focus {
-		outline: none;
-		border-color: var(--brutalist-accent);
-		box-shadow: 0 0 0 2px var(--brutalist-accent);
-	}
-
-	.brutalist-heading {
-		font-weight: var(--brutalist-font-weight-black);
-		text-transform: uppercase;
-		letter-spacing: var(--brutalist-letter-spacing-tight);
-		color: var(--brutalist-black);
-		line-height: 1.1;
-	}
-
-	.brutalist-text {
-		font-weight: var(--brutalist-font-weight-normal);
-		color: var(--brutalist-black);
-		line-height: 1.6;
-	}
-
-	/* Animation utilities */
-	.brutalist-hover-lift {
-		transition: transform 0.2s ease;
-	}
-
-	.brutalist-hover-lift:hover {
-		transform: translate(-2px, -2px);
-	}
-
-	.brutalist-hover-rotate {
-		transition: transform 0.2s ease;
-	}
-
-	.brutalist-hover-rotate:hover {
-		transform: rotate(-2deg) scale(1.05);
+		margin-top: calc(-1 * var(--header-height));
+		padding-top: var(--header-height);
 	}
 }

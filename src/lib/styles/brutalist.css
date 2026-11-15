@@ -1,0 +1,89 @@
+/* The Publication's brutalist UI components, built on the theme tokens. */
+@layer components {
+	.brutalist-button {
+		display: inline-block;
+		padding: 0.75rem 1.5rem;
+		border: var(--border-brutal-thick) solid var(--color-ink);
+		background: var(--color-accent);
+		color: var(--color-paper);
+		font-size: 0.875rem;
+		font-weight: var(--font-weight-black);
+		letter-spacing: var(--tracking-brutal);
+		text-align: center;
+		text-decoration: none;
+		text-transform: uppercase;
+		box-shadow: var(--shadow-brutal);
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+	.brutalist-button:hover {
+		transform: translate(-2px, -2px);
+		box-shadow: 6px 6px 0 var(--color-ink);
+	}
+	.brutalist-button:active {
+		transform: translate(0, 0);
+		box-shadow: 2px 2px 0 var(--color-ink);
+	}
+	.brutalist-button--secondary {
+		border-width: var(--border-brutal);
+		background: var(--color-paper);
+		color: var(--color-ink);
+	}
+	.brutalist-button--secondary:hover {
+		background: var(--color-ink);
+		color: var(--color-paper);
+		box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--color-accent);
+	}
+
+	.brutalist-card {
+		padding: 2rem;
+		border: var(--border-brutal-thick) solid var(--color-ink);
+		background: var(--color-paper);
+		box-shadow: var(--shadow-brutal-lg);
+		transition: all 0.2s ease;
+	}
+	.brutalist-card:hover {
+		transform: translate(-4px, -4px);
+		box-shadow: 12px 12px 0 var(--color-accent);
+	}
+
+	.brutalist-input {
+		padding: 0.75rem 1rem;
+		border: var(--border-brutal) solid var(--color-ink);
+		background: var(--color-paper);
+		font-size: 1rem;
+		font-weight: var(--font-weight-normal);
+		transition: all 0.2s ease;
+	}
+	.brutalist-input:focus {
+		outline: none;
+		border-color: var(--color-accent);
+		box-shadow: 0 0 0 2px var(--color-accent);
+	}
+
+	.brutalist-heading {
+		color: var(--color-ink);
+		font-weight: var(--font-weight-black);
+		letter-spacing: var(--tracking-brutal-tight);
+		line-height: 1.1;
+		text-transform: uppercase;
+	}
+	.brutalist-text {
+		color: var(--color-ink);
+		font-weight: var(--font-weight-normal);
+		line-height: 1.6;
+	}
+
+	.brutalist-hover-lift {
+		transition: transform 0.2s ease;
+	}
+	.brutalist-hover-lift:hover {
+		transform: translate(-2px, -2px);
+	}
+	.brutalist-hover-rotate {
+		transition: transform 0.2s ease;
+	}
+	.brutalist-hover-rotate:hover {
+		transform: rotate(-2deg) scale(1.05);
+	}
+}

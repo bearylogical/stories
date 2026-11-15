@@ -1,47 +1,14 @@
 <script lang="ts">
-	import { setContext } from 'svelte';
-
-	import { themes } from '$lib/config';
-	import { tick } from 'svelte';
-	import { gsap } from 'gsap/dist/gsap';
-	import { Flip } from 'gsap/dist/Flip';
-
-	gsap.registerPlugin(Flip);
-
-	type Layout = 'stack' | 'grid';
-
-	let layout: Layout = 'stack';
-
-	// STYLE CONFIG
-	// Set theme globally (options are 'light' or 'dark')
-	let theme = 'light';
-	setContext('theme', themes[theme]);
-
-	async function flip() {
-		// get initial state
-		const state = Flip.getState('.circle', { props: 'borderRadius' });
-
-		// change layout
-		layout === 'grid' ? (layout = 'stack') : (layout = 'grid');
-
-		// wait for changes to DOM
-		await tick();
-
-		// flip
-		Flip.from(state, {
-			duration: 0.6,
-			absolute: true,
-			scale: true,
-			stagger: -0.1,
-			spin: true,
-			ease: 'power1.easeOut'
-		});
-	}
+	import Seo from '$lib/site/Seo.svelte';
 </script>
 
+<!-- Placeholder until the Front Page is built from the Story list (phase 5). -->
+<Seo description="Visual stories, each exploring a different dataset." />
+
 <div class="container">
-	<h1 class="text-6xl">Under Construction</h1>
+	<h1 class="brutalist-heading text-6xl">Under Construction</h1>
 	<p>This page is currently under construction. Please check back later.</p>
+	<a class="brutalist-button mt-6" href="/postal-sg/">Read: Topography of Singapore Postal Codes</a>
 </div>
 
 <style>
@@ -55,12 +22,11 @@
 	}
 
 	h1 {
-		color: var(--color-primary);
 		margin-bottom: 1rem;
 	}
 
 	p {
-		color: var(--color-secondary);
+		color: var(--color-muted);
 		font-size: 1.25rem;
 	}
 </style>

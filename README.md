@@ -12,11 +12,11 @@ This is a SvelteKit project. To get started, you'll need to have Node.js and pnp
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/stories.git
-   cd postal-sg
+   git clone https://github.com/bearylogical/stories.git
+   cd stories
    ```
 
-2. **Install dependencies:**
+2. **Install dependencies** and copy `.env.example` to `.env` (add your MapTiler key):
    ```bash
    pnpm install
    ```
@@ -55,3 +55,15 @@ This project uses Prettier for code formatting and ESLint for linting.
   pnpm run format
   ```
 
+
+## Deployment
+
+The Publication is a fully static site (`@sveltejs/adapter-static`, every page prerendered; see [ADR 0001](docs/adr/0001-static-build-served-by-nginx-on-coolify.md)).
+
+- **Coolify** builds `main` and serves `build/` with `nginx:alpine`. Pushing to `main` deploys.
+- **Build variables:** `PUBLIC_MAPTILER_KEY` only. Nothing reads runtime variables.
+- **URLs:** each page is written to `<slug>/index.html`. `/<slug>/` is the canonical URL, and `/<slug>` and `/<slug>/index.html` also work. Slugs never change once published.
+
+## Project language
+
+Terms such as Story, Stage, Step and View are defined in [CONTEXT.md](CONTEXT.md). Architectural decisions are in [docs/adr/](docs/adr/).

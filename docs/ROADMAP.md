@@ -10,7 +10,7 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 
 | Phase | Status | Where |
 | --- | --- | --- |
-| 1. Base | Done; static build live. Two Coolify variable tidy-ups and deleting `prod` left | bearylogical/stories#1, PR for the Preflight fix |
+| 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
 | 2. Data | Not started | n/a |
 | 3. Scrollytelling | Not started | n/a |
 | 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
@@ -41,9 +41,9 @@ Open a session in this repo and say:
 
 **Coolify switch (done 2026-11-15):** `stories-frontend` (uuid `rokg0ww004g0gck4o0wsosgw`) builds `main` with Railpack in static mode (Nixpacks is deprecated): build command `pnpm build`, publish directory `/build`, `nginx:alpine` on port 80, no start command, and the custom nginx config with `try_files $uri $uri.html $uri/index.html …`. `/`, `/postal-sg`, `/postal-sg/` and `/postal-sg/index.html` all return 200.
 
-**Still to do:**
-1. In Coolify, delete the preview `ONE_MAP_API_KEY`, and untick **Runtime** on both `PUBLIC_MAPTILER_KEY` entries (build only).
-2. Delete the `prod` branch on GitHub once the Preflight fix below is live.
+`prod` was deleted on GitHub on 2026-11-15; its last commit, `438938a`, is in `main`.
+
+**Still to do:** in Coolify, delete the preview `ONE_MAP_API_KEY`, and untick **Runtime** on both `PUBLIC_MAPTILER_KEY` entries (build only).
 
 **Tailwind Preflight is off:** `src/app.css` loads Tailwind 4's theme and utilities, but not Preflight (its CSS reset). On `prod`, Tailwind 3's reset never ran, so Stories were styled by browser defaults for headings, lists, links and spacing. Turning the reset on in PR #1 removed the postal-sg headline styling, list numbers and link styles. Phase 3 adds deliberate Story typography; it can turn Preflight back on then.
 
@@ -56,6 +56,7 @@ Open a session in this repo and say:
 **Goal:** postal-sg's first load drops from a 72 MB GeoJSON to under 3 MB, and data publishing can be repeated the same way each time. See [ADR 0003](adr/0003-story-data-on-r2-per-slug-immutable.md) and [ADR 0005](adr/0005-postal-sg-ships-compact-binary-not-geojson.md).
 
 **Facts found while planning:**
+- A deploy takes about 3 minutes, but `vite build` takes about 6 seconds of that. The rest is Railpack cloning the repo, copying it into the Docker build, running `pnpm i` (823 packages) from scratch, and pulling `nginx:alpine`. The Railpack image build is about 2½ minutes; the rollout is about 20 seconds.
 - `https://data.bearylogical.net/singpostcode.geojson` is 72,655,205 bytes, served from R2 through Cloudflare with no `cache-control` (`cf-cache-status: DYNAMIC`), compressed with Brotli.
 - R2's CORS rules block `http://localhost:*` (seen in testing), so local builds can't load data. PR previews are probably blocked too.
 - Files live at the bucket root (no per-Slug folders).
@@ -73,8 +74,14 @@ Open a session in this repo and say:
    - R2 CORS allows `http://localhost:5173`, `http://localhost:4173` and the Coolify preview pattern `https://*.stories.bearylogical.net`.
 5. **Repo hygiene:** move Source Data from `src/assets/` to `data/<slug>/`, which is git-ignored (or in LFS). Keep only small derived files that the app imports.
 6. Point the **current** postal-sg page at the new files, so readers get faster loading before phase 4.
+7. **Build time:** cut a deploy from about 3 minutes to under 1.
+   - Moving Source Data out of `src/assets/` (item 5) removes about 219 MB that every deploy clones and copies into the Docker build. The app imports only `singapore_districts_centers.geojson` from there.
+   - Add a `.dockerignore` (or the Railpack equivalent; check that Coolify's Railpack build honours it) that leaves out `data/`, `scripts/`, `docs/` and `build/`.
+   - Move script-only packages (`cheerio`, `axios`, `dotenv`) out of the app's install, e.g. into a `scripts/package.json` workspace, so `pnpm i` installs less on every deploy.
+   - Pin the static image to a version (e.g. `nginx:1.29-alpine`) so Coolify doesn't pull `latest` on every deploy.
+   - Turn on Coolify's debug logs for one deploy to get timings per step, before and after.
 
-**Done when:** postal-sg downloads under 3 MB before the first Step (check the DevTools network panel, cache disabled), works on localhost, and the publish script uploads a new versioned file.
+**Done when:** postal-sg downloads under 3 MB before the first Step (check the DevTools network panel, cache disabled), works on localhost, the publish script uploads a new versioned file, and a deploy takes under 1 minute.
 
 ---
 

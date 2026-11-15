@@ -10,15 +10,17 @@
 //   - same name, different content: the whole publish stops; bump the version
 //   - new name: uploaded
 //
-// The build script for a Story lives in scripts/data/<slug>/build.js and
-// exports `build({ sourceDir, outDir })`.
+// A Story whose Source Data needs processing has a build script at
+// scripts/data/<slug>/build.js that exports `build({ sourceDir, outDir })`.
+// Without one, the files in data/<slug>/ that already have versioned names
+// (<name>.v<N>.<ext>) are published as they are.
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { join, resolve } from 'node:path';
+import { extname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const run = promisify(execFile);
@@ -50,6 +52,36 @@ function parseArgs(argv) {
 }
 
 const CF = process.env.CF_BIN || 'cf';
+
+const CONTENT_TYPES = {
+	'.json': 'application/json',
+	'.geojson': 'application/geo+json',
+	'.csv': 'text/csv; charset=utf-8',
+	'.tsv': 'text/tab-separated-values; charset=utf-8',
+	'.txt': 'text/plain; charset=utf-8',
+	'.topojson': 'application/json',
+	'.pmtiles': 'application/vnd.pmtiles',
+	'.parquet': 'application/vnd.apache.parquet',
+	'.arrow': 'application/vnd.apache.arrow.file',
+	'.png': 'image/png',
+	'.jpg': 'image/jpeg',
+	'.webp': 'image/webp',
+	'.svg': 'image/svg+xml'
+};
+
+/** The default build: copy the already-versioned files in data/<slug>/ as they are. */
+async function copyVersioned({ sourceDir, outDir }) {
+	const entries = await readdir(sourceDir, { withFileTypes: true });
+	const names = entries.filter((e) => e.isFile() && VERSIONED_NAME.test(e.name)).map((e) => e.name);
+	if (names.length === 0) {
+		throw new Error(`No files with versioned names (<name>.v<N>.<ext>) in ${sourceDir}`);
+	}
+	for (const name of names) await copyFile(join(sourceDir, name), join(outDir, name));
+	return names.map((name) => ({
+		name,
+		contentType: CONTENT_TYPES[extname(name)] ?? 'application/octet-stream'
+	}));
+}
 
 /** Runs cf and returns { stdout, stderr }. */
 async function cf(args) {
@@ -100,12 +132,13 @@ async function main() {
 	const outDir = join(sourceDir, 'dist');
 	const buildScript = join(root, 'scripts', 'data', slug, 'build.js');
 
-	if (!existsSync(buildScript)) usage(`no build script at scripts/data/${slug}/build.js`);
 	if (!existsSync(sourceDir)) usage(`no Source Data at data/${slug}/ (it is git-ignored; copy it in first)`);
 
 	await rm(outDir, { recursive: true, force: true });
 	await mkdir(outDir, { recursive: true });
-	const { build } = await import(pathToFileURL(buildScript).href);
+	const { build } = existsSync(buildScript)
+		? await import(pathToFileURL(buildScript).href)
+		: { build: copyVersioned };
 	const built = await build({ sourceDir, outDir });
 
 	const bad = built.filter((f) => !VERSIONED_NAME.test(f.name));

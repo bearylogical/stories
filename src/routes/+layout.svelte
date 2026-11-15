@@ -2,6 +2,7 @@
 	import { setContext } from 'svelte';
 	import Header from '$lib/layout/Header.svelte';
 	import { themes } from '$lib/config';
+	import { absoluteUrl, site } from '$lib/site/config';
 	import './../app.css';
 
 	interface Props {
@@ -16,7 +17,16 @@
 	setContext('theme', themes[theme]);
 </script>
 
-<Header></Header>
+<svelte:head>
+	<link
+		rel="alternate"
+		type="application/rss+xml"
+		title={site.name}
+		href={absoluteUrl('/rss.xml')}
+	/>
+</svelte:head>
+
+<Header />
 
 <main>
 	{@render children?.()}

@@ -13,8 +13,8 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 | 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
 | 2. Data | Done except deploy time: Dockerfile build merged (bearylogical/stories#8); switch Coolify's build pack and time a deploy | bearylogical/stories#4, bearylogical/stories#8 |
 | 3. Scrollytelling | Done | bearylogical/stories#5 |
-| 4. postal-sg rebuild | In progress (PR open) | bearylogical/stories#9 |
-| 5. The rest | Not started (needs 3) | n/a |
+| 4. postal-sg rebuild | Done | bearylogical/stories#9 |
+| 5. The rest | In progress (PR open) | bearylogical/stories#10 |
 
 Update this table when a phase starts, opens a PR, or merges.
 
@@ -280,6 +280,14 @@ The postal-sg Steps couldn't be checked by eye on localhost, because R2's CORS r
 4. **README:** rewrite as "how to publish a Story": wizard, then write, then data publish, then PR preview, then set `status: published`, then merge.
 
 **Done when:** a new Story can go from `pnpm new-story` to a PR preview without editing anything outside its own folder.
+
+**Notes from the PR:**
+
+- The Story list (`$lib/stories`) is server-side only now: the Front Page and `[slug]` read it in `+page.server.ts` while prerendering, and `[slug]/+page.ts` loads just its own Story through `$lib/stories/component.ts`. Before, the eager frontmatter glob put every Story's code on every Story page (1.05 MB preloaded on each); now a Story page preloads 74 KB and then loads only its own Story.
+- `Header.svelte` is now a slim bar (the Publication's name, "All Stories", RSS) that scrolls away with the page instead of a fixed 80px header, so a Scrolly's pinned Stage gets the whole screen.
+- In PR previews and `pnpm dev`, Drafts are on the Front Page (marked "Draft") and may be the featured Story; RSS always lists published Stories only.
+- So a Story needs nothing outside its folder: the wizard writes a `data.ts` in the Story's folder using `$lib/data/story-data.ts`, and `pnpm data:publish` publishes the versioned files in `data/<slug>/` as they are when there is no `scripts/data/<slug>/build.js`.
+- Checked with two throwaway Stories made with `pnpm new-story … --yes` (Map with Story Data, and Custom Sidecar), deleted before the PR: `pnpm build:drafts` prerendered them and showed them on the Front Page; with `status: published`, `pnpm build` featured the newest one and listed it in `/rss.xml`; `data:publish --dry-run` (with a stub `cf`) picked up the versioned files.
 
 ---
 

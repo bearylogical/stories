@@ -47,7 +47,7 @@ function calculateCenters(g) {
     };
 }
 
-const inputPath = './src/assets/singapore_districts.geojson';
+const inputPath = './data/postal-sg/singapore_districts.geojson';
 const outputPath = './src/assets/singapore_districts_centers.geojson';
 
 fs.readFile(inputPath, 'utf8', (err, data) => {

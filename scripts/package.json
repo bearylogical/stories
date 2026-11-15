@@ -1,0 +1,12 @@
+{
+	"name": "stories-scripts",
+	"private": true,
+	"type": "module",
+	"description": "Dependencies for the Source Data scripts in this folder. Not installed by the site build; run `pnpm -C scripts install` before using them.",
+	"dependencies": {
+		"@turf/turf": "^7.2.0",
+		"axios": "^1.10.0",
+		"cheerio": "^1.1.0",
+		"dotenv": "^16.6.1"
+	}
+}

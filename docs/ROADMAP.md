@@ -8,13 +8,13 @@ This turns the repo from one hand-built Story into a **Publication**: Stories wr
 
 ## Status
 
-| Phase | Status | Where |
-| --- | --- | --- |
-| 1. Base | Done (two Coolify variable tidy-ups left) | bearylogical/stories#1, bearylogical/stories#2 |
-| 2. Data | Not started | n/a |
-| 3. Scrollytelling | Not started | n/a |
-| 4. postal-sg rebuild | Not started (needs 2 and 3) | n/a |
-| 5. The rest | Not started (needs 3) | n/a |
+| Phase                | Status                                                                                       | Where                                          |
+| -------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1. Base              | Done (two Coolify variable tidy-ups left)                                                    | bearylogical/stories#1, bearylogical/stories#2 |
+| 2. Data              | In progress (PR open; R2 upload, Cloudflare rules and Coolify image pin waiting on approval) | branch `claude/phase2-data-f27a09`             |
+| 3. Scrollytelling    | Not started                                                                                  | n/a                                            |
+| 4. postal-sg rebuild | Not started (needs 2 and 3)                                                                  | n/a                                            |
+| 5. The rest          | Not started (needs 3)                                                                        | n/a                                            |
 
 Update this table when a phase starts, opens a PR, or merges.
 
@@ -31,6 +31,7 @@ Open a session in this repo and say:
 **Goal:** one branch, a static build, a clean dependency list, a shared theme.
 
 **Done in PR #1:**
+
 - Rebuilt the branch from `prod`, which was 11 commits ahead of `main` (Svelte 5, workers, landing page), and merged `main` back in.
 - `adapter-static` with `prerender = true` and `trailingSlash: 'always'` in `src/routes/+layout.ts`. Each page is written as `<slug>/index.html`, so `/postal-sg/index.html` works again.
 - `src/lib/site/`: `config.ts` (Publication name, URL, `absoluteUrl()`) and `Seo.svelte` (title, canonical URL, link-preview tags).
@@ -56,6 +57,7 @@ Open a session in this repo and say:
 **Goal:** postal-sg's first load drops from a 72 MB GeoJSON to under 3 MB, and data publishing can be repeated the same way each time. See [ADR 0003](adr/0003-story-data-on-r2-per-slug-immutable.md) and [ADR 0005](adr/0005-postal-sg-ships-compact-binary-not-geojson.md).
 
 **Facts found while planning:**
+
 - A deploy takes about 3 minutes, but `vite build` takes about 6 seconds of that. The rest is Railpack cloning the repo, copying it into the Docker build, running `pnpm i` (823 packages) from scratch, and pulling `nginx:alpine`. The Railpack image build is about 2½ minutes; the rollout is about 20 seconds.
 - `https://data.bearylogical.net/singpostcode.geojson` is 72,655,205 bytes, served from R2 through Cloudflare with no `cache-control` (`cf-cache-status: DYNAMIC`), compressed with Brotli.
 - R2's CORS rules block `http://localhost:*` (seen in testing), so local builds can't load data. PR previews are probably blocked too.
@@ -63,6 +65,7 @@ Open a session in this repo and say:
 - Source Data and scripts are in `scripts/` and `src/assets/`; about 210 MB of raw GeoJSON is committed to git.
 
 **Scope:**
+
 1. **Layout:** move to `data.bearylogical.net/<slug>/<name>.v<N>.<ext>`. Keep the old root files until the live site no longer uses them.
 2. **Binary format:** a build script writes the postal points as a packed binary file: a short header, then for each point a `Uint32` postal code and `Float32` longitude and latitude (about 12 bytes per point).
    - Address text goes into separate files per sector (first two digits), fetched only when zoomed into buildings or in the Explorer.
@@ -83,6 +86,22 @@ Open a session in this repo and say:
 
 **Done when:** postal-sg downloads under 3 MB before the first Step (check the DevTools network panel, cache disabled), works on localhost, the publish script uploads a new versioned file, and a deploy takes under 1 minute.
 
+**Done in the phase 2 PR:**
+
+- `src/lib/data/postal-points.js` defines the binary format: 16-byte header (`PSPT`, format version, count, reserved), then three columns: `Uint32` codes sorted ascending, `Float32` longitudes, `Float32` latitudes. 141,839 points = 1.70 MB raw, 0.56 MB with Brotli. The 9 OneMap entries with `POSTAL: "NIL"` (East Coast Park areas) are left out.
+- Addresses: `addresses-<SS>.v1.json`, one per sector (83 files), each an array of address strings in the same order as that sector's points. The worker fetches them only for results of at most 2,000 points in at most 4 sectors (Step 7 onwards and the Explorer), so nothing is fetched before the first Step.
+- `src/lib/data/postal-sg.js` holds the version numbers; both the build script and the page read file names from it. `VITE_DATA_HOST` overrides the data host (for testing unpublished files locally).
+- `scripts/data/publish.js` (`pnpm data:publish <slug> [--dry-run]`) runs `scripts/data/<slug>/build.js` into `data/<slug>/dist/`, lists `<slug>/` in the bucket, skips files whose MD5 matches the R2 ETag, and refuses to publish at all if any existing name has different content.
+- Source Data moved from `src/assets/` to `data/postal-sg/` (git-ignored). Only `singapore_districts_centers.geojson` stays in `src/assets/`, because the page imports it.
+- `cheerio`, `axios` and `dotenv` moved to `scripts/package.json`, a separate package (not a pnpm workspace, so the site's `pnpm i` doesn't install it). Install with `pnpm -C scripts install`.
+- `.dockerignore` leaves out `data/`, `docs/`, `scripts/`, `build/` and `.git`. Railpack honours it ([docs](https://railpack.com/config/excluding-files)).
+
+**Found along the way:**
+
+- `cf r2 objects put` has no option for `Cache-Control` (cf 1.0.0-beta.32). The `immutable` header is set at the edge instead: a response header transform rule on `data.bearylogical.net` for paths matching `/*/*.v*.*`.
+- `cf` needs Node 22.18+. The repo's Node (nvm 22.16) is too old; Homebrew's Node 24 works.
+- Deploy baseline before this phase: 96 s for `3bf884c` (Railpack cached layers), about 3 to 4 minutes for earlier cold deploys.
+
 ---
 
 ## Phase 3: Scrollytelling
@@ -90,6 +109,7 @@ Open a session in this repo and say:
 **Goal:** a Story can be written as mdsvex text with a declarative Scrolly. See [ADR 0002](adr/0002-declarative-views-on-gsap-scrolltrigger.md) and [ADR 0004](adr/0004-stories-live-in-a-content-folder-not-routes.md).
 
 **Scope:**
+
 1. **mdsvex:** add mdsvex (`.svx`), with Svelte 5 runes inside Stories.
 2. **Content folder:** each Story is `src/stories/<slug>/index.svx`, alongside its own components. One route `src/routes/[slug]/` with:
    - `+page.ts` loads the Story through `import.meta.glob`.
@@ -127,6 +147,7 @@ Open a session in this repo and say:
 **Goal:** `src/stories/postal-sg/index.svx` replaces `src/routes/postal-sg/+page.svelte`, at the same URL, looking and behaving the same, and faster.
 
 **Scope:**
+
 1. Rewrite the 8 Steps (`map01`–`map08`) as Views. The current behaviour to match:
    - districts outline
    - districts + heatmap
@@ -151,6 +172,7 @@ Open a session in this repo and say:
 ## Phase 5: The rest
 
 **Scope:**
+
 1. **Front Page** (`/`), built from the Story list:
    - The newest published Story featured large.
    - The rest listed newest first, each with image, title, date and summary.
@@ -167,6 +189,7 @@ Open a session in this repo and say:
    - optional Story Data file names
 
    It then writes `src/stories/<slug>/index.svx` with `status: draft` and today's date, sets up `data/<slug>/`, and prints the dev URL. Every prompt also has a flag (`--title`, `--slug`, …, `--yes`), so it can run without prompts, e.g. from scripts or from Claude.
+
 4. **README:** rewrite as "how to publish a Story": wizard, then write, then data publish, then PR preview, then set `status: published`, then merge.
 
 **Done when:** a new Story can go from `pnpm new-story` to a PR preview without editing anything outside its own folder.

@@ -1,0 +1,3 @@
+# Stories live in `src/stories/`, not in `src/routes/`
+
+Each Story is `src/stories/<slug>/index.svx`, kept with its own components. One dynamic route, `src/routes/[slug]/`, loads Stories through `import.meta.glob` and uses `entries()` to choose which Slugs get prerendered. This is unusual for SvelteKit. We did it because SvelteKit prerenders every route folder it finds, which made it impossible to leave Drafts out of a production build cleanly. Now one Story list decides both what gets built and what the Front Page shows. Drafts are included when `includeDrafts` is on: always in `pnpm dev`, through `PUBLIC_INCLUDE_DRAFTS` in `build:drafts` and on Coolify PR previews, and never in a normal production build.

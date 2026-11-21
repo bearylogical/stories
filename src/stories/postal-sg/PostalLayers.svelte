@@ -1,8 +1,8 @@
 <!--
 	postal-sg's sources and layers, inside its MapStage. Which layers show, where the camera
-	goes and how the points are filtered is up to the View (see `withPattern` in ./views.ts).
-	This component loads the points once, fetches the small sets that need addresses, and
-	drives the Sweep from the Scrub's progress. Layer ids are listed in ./views.ts.
+	goes and how they are filtered is up to the View, worked out by PostalStage
+	(./stage-spec.ts); this component only defines the layers (ids in ./layer-ids.ts) and
+	loads the points once.
 -->
 <script lang="ts">
 	import {
@@ -17,22 +17,22 @@
 	import { urls } from '$lib/data/postal-sg.js';
 	import districtCentersUrl from './district-centers.geojson?url';
 	import Buildings from './Buildings.svelte';
+	import { LAYER, type BaseBuildings } from './layer-ids';
 	import { NO_POINTS, postal, type PostalPoints } from './postal-data.svelte';
-	import {
-		DIGIT_COLORS,
-		HIGHLIGHT,
-		MATCH_COLOR,
-		PLACES,
-		STORY_PATTERNS,
-		type PostalView
-	} from './views';
+	import { DIGIT_COLORS, MATCH_COLOR, PLACES, STORY_PATTERNS } from './views';
 
 	interface Props {
-		view: PostalView;
-		progress: number;
+		/** The View's points, with addresses when there are few enough. */
+		selection: PostalPoints | null;
+		/** The points the Sweep walks through (its layers' filters say how far it has got). */
+		sweep: PostalPoints;
+		/** Whether to colour the base map's buildings that hold a selected point. */
+		buildings: boolean;
+		/** Where the base map keeps its 3D buildings. */
+		base: BaseBuildings;
 	}
 
-	let { view, progress }: Props = $props();
+	let { selection, sweep, buildings, base }: Props = $props();
 
 	/** Above this zoom the heatmap gives way to dots and buildings. */
 	const HEATMAP_MAX_ZOOM = 16;
@@ -53,48 +53,6 @@
 		});
 	});
 
-	/** The View's points, with addresses, when there are few enough. */
-	let selection: PostalPoints | null = $state.raw(null);
-
-	$effect(() => {
-		const pattern = view.pattern;
-		if (!pattern) {
-			selection = null;
-			return;
-		}
-		let live = true;
-		postal
-			.query(pattern)
-			.then((result) => {
-				if (live) selection = result.features;
-			})
-			.catch(() => {});
-		return () => {
-			live = false;
-		};
-	});
-
-	const showBuildings = $derived(!view.layers || view.layers.some((id) => HIGHLIGHT.includes(id)));
-
-	// The Sweep: the selection's points (sorted by code) appear one street at a time as the
-	// reader scrolls. `sweepIndex` is shared with the Step's caption.
-	const sweepPoints = $derived(view.sweep ? (selection ?? NO_POINTS) : NO_POINTS);
-	const sweepCode = $derived.by(() => {
-		const features = sweepPoints.features;
-		if (features.length === 0) return undefined;
-		const index = Math.min(features.length - 1, Math.floor(progress * features.length));
-		return features[index].properties.POSTAL;
-	});
-
-	$effect(() => {
-		const map = mapCtx.map;
-		const code = sweepCode;
-		if (!map || !map.getLayer('postal-sweep')) return;
-		// Set here, not through the View: it changes on every scroll frame.
-		map.setFilter('postal-sweep', code ? ['<=', ['get', 'POSTAL'], code] : null);
-		map.setFilter('postal-sweep-label', ['==', ['get', 'POSTAL'], code ?? '']);
-	});
-
 	const digitColor = [
 		'match',
 		['slice', ['get', 'POSTAL'], 0, 1],
@@ -103,11 +61,11 @@
 	] as const;
 </script>
 
-<Buildings points={selection} active={showBuildings} />
+<Buildings points={selection} active={buildings} {base} />
 
 <GeoJSONSource id="districts" data={urls.districts} promoteId="name">
 	<FillLayer
-		id="district-fill"
+		id={LAYER.districtFill}
 		minzoom={8}
 		maxzoom={14}
 		paint={{
@@ -116,7 +74,7 @@
 		}}
 	/>
 	<LineLayer
-		id="district-line"
+		id={LAYER.districtLine}
 		minzoom={8}
 		layout={{ 'line-cap': 'round', 'line-join': 'round' }}
 		paint={{ 'line-color': '#003300', 'line-width': 0.7 }}
@@ -125,7 +83,7 @@
 
 <GeoJSONSource id="district-centers" data={districtCentersUrl} promoteId="district">
 	<SymbolLayer
-		id="district-labels"
+		id={LAYER.districtLabels}
 		minzoom={9}
 		paint={{
 			'text-color': '#010',
@@ -145,7 +103,7 @@
 <!-- Every point, once. Views filter it; nothing re-sends it. -->
 <GeoJSONSource id="postal-points" data={postal.allPoints ?? NO_POINTS}>
 	<HeatmapLayer
-		id="postal-heatmap"
+		id={LAYER.heatmap}
 		minzoom={9}
 		maxzoom={HEATMAP_MAX_ZOOM}
 		paint={{
@@ -174,7 +132,7 @@
 		}}
 	/>
 	<CircleLayer
-		id="postal-digits"
+		id={LAYER.digits}
 		paint={{
 			'circle-color': digitColor as never,
 			'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 1.8, 14, 3.5],
@@ -182,7 +140,7 @@
 		}}
 	/>
 	<CircleLayer
-		id="postal-dots"
+		id={LAYER.dots}
 		paint={{
 			'circle-color': '#003c57',
 			'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 1, 13, 2.5, 16, 4],
@@ -195,7 +153,7 @@
 <!-- The View's points with addresses (small sets only). -->
 <GeoJSONSource id="postal-selection" data={selection ?? NO_POINTS}>
 	<SymbolLayer
-		id="postal-addresses"
+		id={LAYER.addresses}
 		layout={{
 			'text-font': ['Roboto Regular', 'Noto Sans Regular'],
 			'text-field': ['get', 'ADDRESS'],
@@ -214,9 +172,9 @@
 	/>
 </GeoJSONSource>
 
-<GeoJSONSource id="postal-sweep" data={sweepPoints}>
+<GeoJSONSource id="postal-sweep" data={sweep}>
 	<CircleLayer
-		id="postal-sweep"
+		id={LAYER.sweep}
 		paint={{
 			'circle-color': MATCH_COLOR,
 			'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2, 15, 4],
@@ -225,7 +183,7 @@
 		}}
 	/>
 	<SymbolLayer
-		id="postal-sweep-label"
+		id={LAYER.sweepLabel}
 		layout={{
 			'text-font': ['Roboto Bold', 'Noto Sans Bold'],
 			'text-field': ['get', 'ADDRESS'],
@@ -246,7 +204,7 @@
 
 <GeoJSONSource id="annotations" data={PLACES}>
 	<SymbolLayer
-		id="annotations"
+		id={LAYER.annotations}
 		layout={{
 			'text-font': ['Roboto Italic', 'Noto Sans Italic'],
 			'text-field': ['get', 'name'],

@@ -17,7 +17,9 @@
 	let { view, progress, duration }: Props = $props();
 
 	const mapCtx = getMapContext();
-	const viewKey = $derived(JSON.stringify(view));
+	// A new View for the camera: filters don't move it, and may change while a Step scrolls
+	// (e.g. a cursor following a Scrub), which mustn't restart the camera's flight.
+	const viewKey = $derived(JSON.stringify({ ...view, filters: undefined }));
 
 	/** Whether `camera` is close enough to ease to in a straight line instead of flying. */
 	function isNear(map: MaplibreMap, camera: ReturnType<typeof cameraOptions>): boolean {

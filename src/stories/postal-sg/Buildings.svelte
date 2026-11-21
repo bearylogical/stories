@@ -18,6 +18,7 @@
 		SymbolLayer,
 		getMapContext
 	} from 'svelte-maplibre-gl';
+	import { untrack } from 'svelte';
 	import type {
 		FilterSpecification,
 		MapGeoJSONFeature,
@@ -25,6 +26,7 @@
 		MapSourceDataEvent
 	} from 'maplibre-gl';
 	import type { Feature, FeatureCollection, Polygon, Position } from 'geojson';
+	import { LAYER, type BaseBuildings } from './layer-ids';
 	import { NO_POINTS, type PostalPoints } from './postal-data.svelte';
 	import { MATCH_COLOR } from './views';
 
@@ -33,13 +35,14 @@
 		points: PostalPoints | null;
 		/** Whether the View shows buildings. */
 		active: boolean;
+		/** Where the base map keeps its 3D buildings. */
+		base: BaseBuildings;
 	}
 
-	let { points, active }: Props = $props();
+	let { points, active, base }: Props = $props();
 
-	const SOURCE = 'maptiler_planet';
-	const SOURCE_LAYER = 'building';
-	const LAYER = 'Building 3D';
+	// The base style is the Stage's choice, fixed for the map's life.
+	const { source: SOURCE, sourceLayer: SOURCE_LAYER, layer: BASE_LAYER } = untrack(() => base);
 	const OTHER_COLOR = '#c9c4ba';
 	/** Below this the base map has no 3D buildings. */
 	const MIN_ZOOM = 14.5;
@@ -67,24 +70,24 @@
 	$effect(() => {
 		if (!mapCtx.map) return;
 		mapCtx.waitForStyleLoaded((map) => {
-			if (!map.getLayer(LAYER)) return;
+			if (!map.getLayer(BASE_LAYER)) return;
 			// The base style writes `["!has", "hide_3d"]` in the legacy syntax, which can't be
 			// combined with expressions; this is the same filter as an expression.
-			baseFilter = map.getFilter(LAYER) ? ['!', ['has', 'hide_3d']] : undefined;
-			map.setPaintProperty(LAYER, 'fill-extrusion-color', [
+			baseFilter = map.getFilter(BASE_LAYER) ? ['!', ['has', 'hide_3d']] : undefined;
+			map.setPaintProperty(BASE_LAYER, 'fill-extrusion-color', [
 				'case',
 				['boolean', ['feature-state', 'match'], false],
 				MATCH_COLOR,
 				OTHER_COLOR
 			]);
-			map.setPaintProperty(LAYER, 'fill-extrusion-opacity', 0.85);
+			map.setPaintProperty(BASE_LAYER, 'fill-extrusion-opacity', 0.85);
 			map.setPaintProperty(
-				LAYER,
+				BASE_LAYER,
 				'fill-extrusion-height',
 				rising(['coalesce', ['get', 'render_height'], 10]) as never
 			);
 			map.setPaintProperty(
-				LAYER,
+				BASE_LAYER,
 				'fill-extrusion-base',
 				rising(['coalesce', ['get', 'render_min_height'], 0]) as never
 			);
@@ -210,7 +213,7 @@
 		splitKey = key;
 		const leaveOut: FilterSpecification = ['!', ['in', ['id'], ['literal', ids]]];
 		map.setFilter(
-			LAYER,
+			BASE_LAYER,
 			ids.length === 0
 				? (baseFilter ?? null)
 				: baseFilter
@@ -309,7 +312,7 @@
 
 <GeoJSONSource id="building-split" data={split}>
 	<FillExtrusionLayer
-		id="building-split"
+		id={LAYER.buildingSplit}
 		minzoom={14.5}
 		paint={{
 			'fill-extrusion-color': ['case', ['get', 'match'], MATCH_COLOR, OTHER_COLOR],
@@ -322,7 +325,7 @@
 
 <GeoJSONSource id="building-points" data={points ?? NO_POINTS}>
 	<SymbolLayer
-		id="building-labels"
+		id={LAYER.buildingLabels}
 		minzoom={15}
 		paint={{
 			'text-color': '#000',

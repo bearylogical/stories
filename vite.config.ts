@@ -1,6 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig, loadEnv } from 'vite';
+import { loadEnv } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig(({ command, mode }) => {
 	const env = loadEnv(mode, process.cwd(), 'PUBLIC_');
@@ -13,6 +14,11 @@ export default defineConfig(({ command, mode }) => {
 		define: { __INCLUDE_DRAFTS__: JSON.stringify(includeDrafts) },
 		// Tailwind 4 runs as a Vite plugin; an inline (empty) PostCSS config stops Vite
 		// from picking up a stray postcss.config.* from a parent directory.
-		css: { postcss: { plugins: [] } }
+		css: { postcss: { plugins: [] } },
+		test: {
+			include: ['src/**/*.test.{js,ts}', 'scripts/**/*.test.js'],
+			environment: 'node',
+			passWithNoTests: true
+		}
 	};
 });

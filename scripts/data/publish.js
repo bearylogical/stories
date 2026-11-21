@@ -22,11 +22,11 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { extname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isVersionedName, storyDataKey } from '../../src/lib/data/story-data.js';
 
 const run = promisify(execFile);
 
 const DEFAULT_BUCKET = 'bearylogical-stories-data'; // served at data.bearylogical.net
-const VERSIONED_NAME = /^[a-z0-9][a-z0-9-]*\.v\d+\.[a-z0-9]+$/;
 
 function usage(message) {
 	if (message) console.error(`error: ${message}\n`);
@@ -72,7 +72,7 @@ const CONTENT_TYPES = {
 /** The default build: copy the already-versioned files in data/<slug>/ as they are. */
 async function copyVersioned({ sourceDir, outDir }) {
 	const entries = await readdir(sourceDir, { withFileTypes: true });
-	const names = entries.filter((e) => e.isFile() && VERSIONED_NAME.test(e.name)).map((e) => e.name);
+	const names = entries.filter((e) => e.isFile() && isVersionedName(e.name)).map((e) => e.name);
 	if (names.length === 0) {
 		throw new Error(`No files with versioned names (<name>.v<N>.<ext>) in ${sourceDir}`);
 	}
@@ -141,7 +141,7 @@ async function main() {
 		: { build: copyVersioned };
 	const built = await build({ sourceDir, outDir });
 
-	const bad = built.filter((f) => !VERSIONED_NAME.test(f.name));
+	const bad = built.filter((f) => !isVersionedName(f.name));
 	if (bad.length) throw new Error(`Not versioned names (<name>.v<N>.<ext>): ${bad.map((f) => f.name).join(', ')}`);
 
 	const remote = await listRemote(bucket, `${slug}/`);
@@ -150,7 +150,7 @@ async function main() {
 	const conflicts = [];
 	for (const file of built) {
 		const path = join(outDir, file.name);
-		const key = `${slug}/${file.name}`;
+		const key = storyDataKey(slug, file.name);
 		const hash = md5(await readFile(path));
 		const size = (await stat(path)).size;
 		const existing = remote.get(key);

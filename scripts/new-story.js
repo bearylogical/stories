@@ -13,11 +13,18 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import * as p from '@clack/prompts';
+import { versionedName } from '../src/lib/data/story-data.js';
+import {
+	SLUG_RULE,
+	draftFrontmatter,
+	frontmatterBlock,
+	isSlug,
+	parseFrontmatter,
+	slugify
+} from '../src/lib/stories/story-rules.js';
+import { keyOf } from './lib/data-keys.js';
 
 const root = resolve(import.meta.dirname, '..');
-
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const DATA_NAME = /^[a-z0-9][a-z0-9-]*\.[a-z0-9]+$/;
 
 const STAGES = /** @type {const} */ (['map', 'custom']);
 const LAYOUTS = /** @type {const} */ (['overlay', 'sidecar']);
@@ -52,22 +59,10 @@ if (flags.help) {
 
 // --- Checks, shared by flags and prompts. Each returns an error message or undefined. ---
 
-const slugify = (title) =>
-	title
-		.normalize('NFKD')
-		.replace(/[̀-ͯ]/g, '')
-		.toLowerCase()
-		.replace(/['’]/g, '')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '')
-		.slice(0, 60)
-		.replace(/-+$/, '');
-
 const checks = {
 	title: (v) => (!v?.trim() ? 'A title is required.' : undefined),
 	slug: (v) => {
-		if (!v || !SLUG.test(v))
-			return 'Use lower-case letters and digits joined by "-", e.g. hdb-heights.';
+		if (!isSlug(v)) return `Use ${SLUG_RULE}.`;
 		if (existsSync(join(root, 'src/stories', v))) return `src/stories/${v}/ already exists.`;
 	},
 	summary: (v) => (!v?.trim() ? 'A summary is required (it shows on the Front Page).' : undefined),
@@ -81,7 +76,7 @@ const checks = {
 			: 'Steps must be a whole number from 1 to 20.';
 	},
 	data: (v) => {
-		const bad = parseDataNames(v).filter((name) => !DATA_NAME.test(name));
+		const bad = parseDataNames(v).filter((name) => !dataFile(name));
 		if (bad.length) return `Not a file name like counts.csv: ${bad.join(', ')}`;
 		const stems = parseDataNames(v).map((name) => keyOf(name));
 		if (new Set(stems).size !== stems.length) return 'Two files have the same name.';
@@ -95,14 +90,22 @@ function parseDataNames(value) {
 		.filter(Boolean);
 }
 
-/** `district-counts.csv` → `districtCounts`, the key in the Story's `urls`. */
-function keyOf(name) {
-	const stem = name.slice(0, name.lastIndexOf('.'));
-	return stem.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(\d)/, '_$1');
+/**
+ * A Story Data file name as given (`district-counts.csv`), split into the parts of its
+ * first published version (`district-counts.v1.csv`); undefined if it can't be one.
+ * @param {string} file
+ */
+function dataFile(file) {
+	const dot = file.lastIndexOf('.');
+	if (dot <= 0) return undefined;
+	const name = file.slice(0, dot);
+	const ext = file.slice(dot + 1);
+	try {
+		return { name, ext, published: versionedName(name, 1, ext) };
+	} catch {
+		return undefined;
+	}
 }
-
-/** `counts.csv` → `counts.v1.csv`, the first published version. */
-const versioned = (name) => name.replace(/(\.[a-z0-9]+)$/, '.v1$1');
 
 // --- Asking ---
 
@@ -227,10 +230,17 @@ const dataNames = parseDataNames(
 // --- Writing ---
 
 const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local time
-const files = dataNames.map((name) => ({ name, key: keyOf(name), published: versioned(name) }));
-const geojson = files.find((f) => f.name.endsWith('.geojson'));
-
-const yaml = (text) => JSON.stringify(text); // a JSON string is a valid YAML string
+const meta = draftFrontmatter({ title, summary, published: today });
+try {
+	parseFrontmatter(slug, meta); // the reader's own check, so a new Draft never breaks the build
+} catch (error) {
+	fail(/** @type {Error} */ (error).message);
+}
+const files = dataNames.map((file) => ({
+	.../** @type {NonNullable<ReturnType<typeof dataFile>>} */ (dataFile(file)),
+	key: keyOf(file)
+}));
+const geojson = files.find((f) => f.ext === 'geojson');
 
 function storySource() {
 	const imports = ["\timport { Scrolly, Step } from '$lib/scrolly';"];
@@ -276,14 +286,7 @@ Step ${i + 1}. Write what the reader should notice here.
 		? `\n\t// Story Data: ${files.map((f) => `urls.${f.key}`).join(', ')} (see ./data.ts).`
 		: '';
 
-	return `---
-title: ${yaml(title)}
-published: ${today}
-summary: ${yaml(summary)}
-image: /covers/default.jpg
-status: draft
----
-
+	return `${frontmatterBlock(meta)}
 <script lang="ts">
 ${imports.join('\n')}${dataNote}
 </script>
@@ -340,16 +343,24 @@ const customStage = `<!--
 
 const dataSource = () => `// Story Data for ${slug} (docs/adr/0003).
 //
-// Put each file in data/${slug}/ under the name below, then run \`pnpm data:publish ${slug}\`.
-// A published file never changes: to change one, add it as the next version (e.g. .v2.)
-// and update its name here. Set VITE_DATA_HOST to test files before publishing.
-import { storyDataUrl } from '$lib/data/story-data';
+// Put each file in data/${slug}/ under its name in \`files\`, then run \`pnpm data:publish ${slug}\`.
+// A published file never changes: to change one, bump its version in VERSIONS, put the new
+// file in data/${slug}/ under its new name, and publish again. Set VITE_DATA_HOST to test
+// files before publishing.
+import { storyDataUrls, versionedName } from '$lib/data/story-data';
 
 const SLUG = '${slug}';
 
-export const urls = {
-${files.map((f) => `\t${f.key}: storyDataUrl(SLUG, '${f.published}')`).join(',\n')}
+export const VERSIONS = {
+${files.map((f) => `\t${f.key}: 1`).join(',\n')}
 };
+
+/** File names (relative to \`<DATA_HOST>/<SLUG>/\`). */
+export const files = {
+${files.map((f) => `\t${f.key}: versionedName('${f.name}', VERSIONS.${f.key}, '${f.ext}')`).join(',\n')}
+};
+
+export const urls = storyDataUrls(SLUG, files);
 `;
 
 const storyDir = join(root, 'src/stories', slug);

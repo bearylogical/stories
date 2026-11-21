@@ -19,6 +19,7 @@ sources:
 	import Em from '$lib/ui/Em.svelte';
 	import Explorer from './Explorer.svelte';
 	import SweepCaption from './SweepCaption.svelte';
+	import { setSweepContext } from './sweep.svelte';
 	import {
 		ADDRESSES,
 		ANNOTATIONS,
@@ -42,6 +43,9 @@ sources:
 
 	// The map (MapLibre is most of the page's JavaScript) loads after the text is on screen.
 	const stageModule = import('./PostalStage.svelte');
+
+	// The Stage moves the Sweep; its Step's caption shows where it has got to.
+	setSweepContext();
 
 	// The Explorer moves the map as the reader types, through its Step's View.
 	let explorer: PostalView = $state(EXPLORER_START);
@@ -140,7 +144,7 @@ When the third digit is <b>0 to 4</b>, the code is usually an HDB block. When it
 
 Private homes are numbered street by street, and backwards. As the code climbs from 546000 to 549999, street names run from S down to B: Simon Place, Rosyth, Poh Huat, Parry, Leith, Kovan, Jansen, Hillside, Florence and finally Boundary Road.
 
-<SweepCaption pattern="54[6-9]*" />
+<SweepCaption />
 
 </Step>
 

@@ -9,6 +9,8 @@
 		"preview": "vite preview",
 		"preview:drafts": "pnpm build:drafts && vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
@@ -37,7 +39,8 @@
 		"tailwindcss": "^4.1.11",
 		"typescript": "^5.8.3",
 		"typescript-eslint": "^8.35.1",
-		"vite": "^5.4.19"
+		"vite": "^5.4.19",
+		"vitest": "^2.1.9"
 	},
 	"type": "module",
 	"packageManager": "pnpm@9.8.0+sha256.56a9e76b51796ca7f73b85e44cf83712862091f4d498c0ce4d5b7ecdc6ba18f7",

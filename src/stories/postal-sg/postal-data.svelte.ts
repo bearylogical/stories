@@ -3,27 +3,16 @@
  * drawn its first frame. The map gets every point once (`postal.allPoints`) and filters them
  * itself; queries return counts, bounds, and the points with addresses for small results.
  */
-import type { FeatureCollection, Point } from 'geojson';
 import { urls } from '$lib/data/postal-sg.js';
+import {
+	MESSAGES,
+	type FromWorker,
+	type PostalPoints,
+	type PostalResult,
+	type ToWorker
+} from './postal-protocol.js';
 
-export interface PostalProperties {
-	POSTAL: string;
-	/** Without the trailing "SINGAPORE <code>". Only on small results. */
-	ADDRESS?: string;
-}
-export type PostalPoints = FeatureCollection<Point, PostalProperties>;
-export type Bounds = [[west: number, south: number], [east: number, north: number]];
-
-export interface PostalResult {
-	pattern: string;
-	/** Points (addresses) matching. Several can share one code. */
-	count: number;
-	/** Distinct postal codes matching. */
-	unique: number;
-	bounds: Bounds | null;
-	/** The matching points, only for results of up to a few thousand. */
-	features: PostalPoints | null;
-}
+export type { Bounds, PostalPoints, PostalProperties, PostalResult } from './postal-protocol.js';
 
 export const NO_POINTS: PostalPoints = { type: 'FeatureCollection', features: [] };
 
@@ -45,7 +34,9 @@ class PostalData {
 	#worker: Promise<Worker> | undefined;
 	#cache = new Map<string, Promise<PostalResult>>();
 	#pinned = new Set<string>(['*']);
-	#waiting = new Map<string, (result: PostalResult) => void>();
+	/** Queries sent to the worker and not yet answered, by request id. */
+	#waiting = new Map<number, { resolve: (r: PostalResult) => void; reject: (e: Error) => void }>();
+	#nextId = 0;
 
 	/** Starts loading the points (once). */
 	load(): Promise<Worker> {
@@ -57,9 +48,10 @@ class PostalData {
 		const { default: PostalWorker } = await import('./workers/postal-worker.js?worker');
 		const worker = new PostalWorker();
 		return new Promise((resolve, reject) => {
-			worker.onmessage = (e: MessageEvent) => {
-				const { type, data } = e.data;
-				if (type === 'LOAD_COMPLETE') {
+			worker.onmessage = (e: MessageEvent<FromWorker>) => {
+				const message = e.data;
+				if (message.type === MESSAGES.LOAD_COMPLETE) {
+					const data = message.data;
 					if (!data.success) {
 						this.error = data.error;
 						reject(new Error(data.error));
@@ -82,15 +74,25 @@ class PostalData {
 						})
 					);
 					resolve(worker);
-				} else if (type === 'FILTER_COMPLETE') {
-					this.#waiting.get(data.pattern)?.(data);
-					this.#waiting.delete(data.pattern);
-				} else if (type === 'ERROR') {
-					this.error = data.message;
+				} else if (message.type === MESSAGES.FILTER_COMPLETE) {
+					this.#settle(message.data.id)?.resolve(message.data.result);
+				} else if (message.type === MESSAGES.ERROR) {
+					const { id, message: text } = message.data;
+					if (id === undefined) this.error = text;
+					else this.#settle(id)?.reject(new Error(text));
 				}
 			};
-			worker.postMessage({ type: 'LOAD_DATA', data: { url: urls.points } });
+			worker.postMessage({
+				type: MESSAGES.LOAD_DATA,
+				data: { url: urls.points }
+			} satisfies ToWorker);
 		});
+	}
+
+	#settle(id: number) {
+		const waiting = this.#waiting.get(id);
+		this.#waiting.delete(id);
+		return waiting;
 	}
 
 	/** The points matching `pattern` (see ../pattern.js). Cached. */
@@ -105,9 +107,10 @@ class PostalData {
 		const result = this.load().then((worker) => {
 			// LOAD_COMPLETE has cached `*` by now.
 			if (pattern === '*') return this.#cache.get('*')!;
-			return new Promise<PostalResult>((resolve) => {
-				this.#waiting.set(pattern, resolve);
-				worker.postMessage({ type: 'FILTER', data: { pattern } });
+			return new Promise<PostalResult>((resolve, reject) => {
+				const id = this.#nextId++;
+				this.#waiting.set(id, { resolve, reject });
+				worker.postMessage({ type: MESSAGES.FILTER, data: { id, pattern } } satisfies ToWorker);
 			});
 		});
 		this.#cache.set(pattern, result);

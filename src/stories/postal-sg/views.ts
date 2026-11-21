@@ -1,12 +1,10 @@
 /**
  * The parts postal-sg's Views are made of (docs/adr/0002). The Steps in `index.svx` put them
- * together; `withPattern` turns a View's `pattern` into filters on the points layers, which
- * `PostalLayers.svelte` defines.
+ * together; PostalStage.svelte works out what each View means for the map (./stage-spec.ts).
  */
 import type { FeatureCollection, Point } from 'geojson';
-import type { FilterSpecification } from 'maplibre-gl';
 import type { MapCamera, MapView } from '$lib/stages';
-import { patternFilter } from './pattern.js';
+import { LAYER } from './layer-ids';
 import type { PostalResult } from './postal-data.svelte';
 
 /** A MapView plus which postal codes the points layers show. */
@@ -15,42 +13,31 @@ export interface PostalView extends MapView {
 	pattern?: string;
 	/** Highlight one old postal district by number. */
 	district?: number;
-	/** In a Scrub Step: reveal the pattern's points in code order as the reader scrolls. */
+	/**
+	 * In a Scrub Step: reveal the pattern's points in code order as the reader scrolls, and
+	 * label the one reached (SweepCaption shows it too).
+	 */
 	sweep?: boolean;
 }
 
-// Layer ids (defined in PostalLayers.svelte and Buildings.svelte).
-export const DISTRICTS = ['district-fill', 'district-line', 'district-labels'];
-export const HEATMAP = ['postal-heatmap'];
+// Groups of layers (ids in ./layer-ids.ts) for a View's `layers`.
+export const DISTRICTS: string[] = [LAYER.districtFill, LAYER.districtLine, LAYER.districtLabels];
+export const HEATMAP: string[] = [LAYER.heatmap];
 /** Every point, coloured by the first digit of its code. */
-export const DIGITS = ['postal-digits'];
+export const DIGITS: string[] = [LAYER.digits];
 /** Every matching point as a dot. */
-export const DOTS = ['postal-dots'];
+export const DOTS: string[] = [LAYER.dots];
 /** Address labels for a small set of points. */
-export const ADDRESSES = ['postal-addresses'];
+export const ADDRESSES: string[] = [LAYER.addresses];
 /**
  * The base map's 3D buildings holding a shown code turn orange. Buildings.svelte colours the
  * base map's layer while this is shown, and draws the buildings it has to split itself.
  */
-export const HIGHLIGHT = ['building-split'];
+export const HIGHLIGHT: string[] = [LAYER.buildingSplit];
 /** Highlighted buildings, labelled with their addresses. */
-export const BUILDINGS = [...HIGHLIGHT, 'building-labels'];
-export const SWEEP = ['postal-sweep', 'postal-sweep-label'];
-export const ANNOTATIONS = ['annotations'];
-
-/** Points layers filtered by a View's `pattern`. */
-const PATTERN_LAYERS = [...HEATMAP, ...DIGITS, ...DOTS];
-
-/** A View's `pattern` and `district` as layer filters, added to its own `filters`. */
-export function withPattern(view: PostalView): PostalView {
-	const filters: Record<string, FilterSpecification> = {};
-	const filter = view.pattern ? patternFilter(view.pattern) : undefined;
-	if (filter) for (const id of PATTERN_LAYERS) filters[id] = filter;
-	if (view.district !== undefined) {
-		filters['district-fill'] = ['==', ['to-number', ['get', 'districtNumber']], view.district];
-	}
-	return { ...view, filters: { ...filters, ...view.filters } };
-}
+export const BUILDINGS: string[] = [...HIGHLIGHT, LAYER.buildingLabels];
+export const SWEEP: string[] = [LAYER.sweep, LAYER.sweepLabel];
+export const ANNOTATIONS: string[] = [LAYER.annotations];
 
 /**
  * Colours for the first digit, 0–8 (9 holds two codes and shares 8's). A categorical palette

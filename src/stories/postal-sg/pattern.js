@@ -1,8 +1,9 @@
-// Postal code patterns, shared by the points worker (which counts and finds matches) and the
-// map (which filters the points layers with the same rule, see `patternFilter`).
+// Postal code patterns, shared by the points worker (which counts and finds matches, see
+// `matcher`) and the map (which filters the points layers with the same rule, see
+// `patternFilter`). pattern.test.js checks the two agree.
 //
-// A pattern is six positions written as digits, at most one `[a-b]` digit range, and at most
-// one `*`, which stands for however many positions are left:
+// A pattern is six positions written as digits or `[a-b]` digit ranges, and at most one `*`,
+// which stands for however many positions are left:
 //
 //   *            every code
 //   54*          sector 54

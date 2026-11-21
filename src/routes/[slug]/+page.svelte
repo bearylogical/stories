@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Seo from '$lib/site/Seo.svelte';
 	import DraftBanner from '$lib/stories/DraftBanner.svelte';
+	import { site } from '$lib/site/config';
 	import { formatDate } from '$lib/stories/format';
 	import type { PageProps } from './$types';
 
@@ -29,7 +30,7 @@
 			{#if story.updated}
 				· updated <time datetime={story.updated}>{formatDate(story.updated)}</time>
 			{/if}
-			// bearylogical
+			// {site.publisher}
 		</p>
 		<p class="story-summary">{story.summary}</p>
 	</header>

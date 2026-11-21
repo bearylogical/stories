@@ -22,6 +22,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { extname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { SLUG_RULE, isSlug } from '../../src/lib/stories/story-rules.js';
 
 const run = promisify(execFile);
 
@@ -46,7 +47,7 @@ function parseArgs(argv) {
 		else usage(`unexpected argument ${a}`);
 	}
 	if (!args.slug) usage('missing <slug>');
-	if (!/^[a-z0-9][a-z0-9-]*$/.test(args.slug)) usage(`not a Slug: ${args.slug}`);
+	if (!isSlug(args.slug)) usage(`not a Slug (${SLUG_RULE}): ${args.slug}`);
 	if (!args.bucket) usage('missing bucket name');
 	return args;
 }

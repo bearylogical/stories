@@ -13,10 +13,18 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import * as p from '@clack/prompts';
+import {
+	SLUG_RULE,
+	draftFrontmatter,
+	frontmatterBlock,
+	isSlug,
+	parseFrontmatter,
+	slugify
+} from '../src/lib/stories/story-rules.js';
+import { keyOf } from './lib/data-keys.js';
 
 const root = resolve(import.meta.dirname, '..');
 
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DATA_NAME = /^[a-z0-9][a-z0-9-]*\.[a-z0-9]+$/;
 
 const STAGES = /** @type {const} */ (['map', 'custom']);
@@ -52,22 +60,10 @@ if (flags.help) {
 
 // --- Checks, shared by flags and prompts. Each returns an error message or undefined. ---
 
-const slugify = (title) =>
-	title
-		.normalize('NFKD')
-		.replace(/[̀-ͯ]/g, '')
-		.toLowerCase()
-		.replace(/['’]/g, '')
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '')
-		.slice(0, 60)
-		.replace(/-+$/, '');
-
 const checks = {
 	title: (v) => (!v?.trim() ? 'A title is required.' : undefined),
 	slug: (v) => {
-		if (!v || !SLUG.test(v))
-			return 'Use lower-case letters and digits joined by "-", e.g. hdb-heights.';
+		if (!isSlug(v)) return `Use ${SLUG_RULE}.`;
 		if (existsSync(join(root, 'src/stories', v))) return `src/stories/${v}/ already exists.`;
 	},
 	summary: (v) => (!v?.trim() ? 'A summary is required (it shows on the Front Page).' : undefined),
@@ -93,12 +89,6 @@ function parseDataNames(value) {
 		.split(',')
 		.map((s) => s.trim())
 		.filter(Boolean);
-}
-
-/** `district-counts.csv` → `districtCounts`, the key in the Story's `urls`. */
-function keyOf(name) {
-	const stem = name.slice(0, name.lastIndexOf('.'));
-	return stem.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^(\d)/, '_$1');
 }
 
 /** `counts.csv` → `counts.v1.csv`, the first published version. */
@@ -227,10 +217,14 @@ const dataNames = parseDataNames(
 // --- Writing ---
 
 const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local time
+const meta = draftFrontmatter({ title, summary, published: today });
+try {
+	parseFrontmatter(slug, meta); // the reader's own check, so a new Draft never breaks the build
+} catch (error) {
+	fail(/** @type {Error} */ (error).message);
+}
 const files = dataNames.map((name) => ({ name, key: keyOf(name), published: versioned(name) }));
 const geojson = files.find((f) => f.name.endsWith('.geojson'));
-
-const yaml = (text) => JSON.stringify(text); // a JSON string is a valid YAML string
 
 function storySource() {
 	const imports = ["\timport { Scrolly, Step } from '$lib/scrolly';"];
@@ -276,14 +270,7 @@ Step ${i + 1}. Write what the reader should notice here.
 		? `\n\t// Story Data: ${files.map((f) => `urls.${f.key}`).join(', ')} (see ./data.ts).`
 		: '';
 
-	return `---
-title: ${yaml(title)}
-published: ${today}
-summary: ${yaml(summary)}
-image: /covers/default.jpg
-status: draft
----
-
+	return `${frontmatterBlock(meta)}
 <script lang="ts">
 ${imports.join('\n')}${dataNote}
 </script>
